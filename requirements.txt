@@ -18,6 +18,5 @@ pandas>=2.2.0
 python-dotenv==1.0.0
 python-dateutil==2.8.2
 
-# Optional but recommended
-# eventlet==0.33.3  # For better WebSocket performance
-# gevent==23.9.1    # Alternative to eventlet
+# WebSocket async support (required)
+eventlet==0.40.3
