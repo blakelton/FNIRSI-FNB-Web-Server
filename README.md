@@ -242,8 +242,6 @@ Contributions are welcome! This project is designed to be:
 - 🔔 Push notifications
 - 📧 Email alerts
 - 🗄️ Database support (PostgreSQL, etc.)
-- 🐳 Docker image
-- 📦 Packaging (PyInstaller, etc.)
 
 ## 🐛 Troubleshooting
 
