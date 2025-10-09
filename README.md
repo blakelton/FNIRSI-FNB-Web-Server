@@ -8,6 +8,54 @@ Monitor voltage, current, power, and more in real-time through your web browser.
 ![Flask](https://img.shields.io/badge/Flask-3.0-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
+## 📸 Screenshots
+
+### Dashboard - Real-Time Monitoring
+![Dashboard with Waveform View](app-images/dashboard-waveform.png)
+*Live voltage, current, and power tracking with interactive charts*
+
+### Oscilloscope & Protocol Analysis
+<table>
+  <tr>
+    <td width="50%">
+      <img src="app-images/dashboard-trigger.png" alt="Trigger Mode">
+      <p align="center"><em>Trigger modes for protocol analysis</em></p>
+    </td>
+    <td width="50%">
+      <img src="app-images/dashboard-scope.png" alt="Oscilloscope View">
+      <p align="center"><em>D+/D- waveform oscilloscope</em></p>
+    </td>
+  </tr>
+</table>
+
+### Advanced Analysis
+<table>
+  <tr>
+    <td width="50%">
+      <img src="app-images/dashboard-spectrum.png" alt="Spectrum Analyzer">
+      <p align="center"><em>FFT spectrum analyzer</em></p>
+    </td>
+    <td width="50%">
+      <img src="app-images/dashboard-analysis.png" alt="Statistical Analysis">
+      <p align="center"><em>Detailed statistics and metrics</em></p>
+    </td>
+  </tr>
+</table>
+
+### Settings & History
+<table>
+  <tr>
+    <td width="50%">
+      <img src="app-images/settings.png" alt="Settings Page">
+      <p align="center"><em>Bluetooth scanner and device settings</em></p>
+    </td>
+    <td width="50%">
+      <img src="app-images/history.png" alt="Session History">
+      <p align="center"><em>Record and review monitoring sessions</em></p>
+    </td>
+  </tr>
+</table>
+
 ## ✨ Features
 
 ### Core Functionality
