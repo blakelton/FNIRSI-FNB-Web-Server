@@ -1,0 +1,652 @@
+{% extends "base_pro.html" %}
+
+{% block title %}Dashboard - FNIRSI FNB58 Professional{% endblock %}
+
+{% block content %}
+<!-- Live Metrics Header -->
+<div class="metrics-header glass-pro">
+    <div class="header-metric voltage-inline">
+        <svg class="header-icon" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+        <div class="header-metric-content">
+            <span class="header-label">VOLTAGE</span>
+            <span class="header-value" id="voltage-value-header">0.00</span>
+            <span class="header-unit">V</span>
+        </div>
+    </div>
+    <div class="header-metric current-inline">
+        <svg class="header-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5.5-2.5l7.51-3.49L17.5 6.5 9.99 9.99 6.5 17.5zm5.5-6.6c.61 0 1.1.49 1.1 1.1s-.49 1.1-1.1 1.1-1.1-.49-1.1-1.1.49-1.1 1.1-1.1z"/></svg>
+        <div class="header-metric-content">
+            <span class="header-label">CURRENT</span>
+            <span class="header-value" id="current-value-header">0.00</span>
+            <span class="header-unit">A</span>
+        </div>
+    </div>
+    <div class="header-metric power-inline">
+        <svg class="header-icon" viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
+        <div class="header-metric-content">
+            <span class="header-label">POWER</span>
+            <span class="header-value" id="power-value-header">0.00</span>
+            <span class="header-unit">W</span>
+        </div>
+    </div>
+    <div class="header-metric energy-inline">
+        <svg class="header-icon" viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4zM11 20v-5.5H9L13 7v5.5h2L11 20z"/></svg>
+        <div class="header-metric-content">
+            <span class="header-label">ENERGY</span>
+            <span class="header-value" id="energy-value-header">0.0000</span>
+            <span class="header-unit">Wh</span>
+        </div>
+    </div>
+    <div class="header-metric capacity-inline">
+        <svg class="header-icon" viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+        <div class="header-metric-content">
+            <span class="header-label">CAPACITY</span>
+            <span class="header-value" id="capacity-value-header">0.00</span>
+            <span class="header-unit">mAh</span>
+        </div>
+    </div>
+    <div class="header-metric temp-inline">
+        <svg class="header-icon" viewBox="0 0 24 24"><path d="M15 13V5c0-1.66-1.34-3-3-3S9 3.34 9 5v8c-1.21.91-2 2.37-2 4 0 2.76 2.24 5 5 5s5-2.24 5-5c0-1.63-.79-3.09-2-4zm-4-8c0-.55.45-1 1-1s1 .45 1 1h-1v1h1v2h-1v1h1v2h-2V5z"/></svg>
+        <div class="header-metric-content">
+            <span class="header-label">TEMP</span>
+            <span class="header-value" id="temp-value-header">--</span>
+            <span class="header-unit">°C</span>
+        </div>
+    </div>
+    <div class="header-metric runtime-inline">
+        <svg class="header-icon" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+        <div class="header-metric-content">
+            <span class="header-label">RUNTIME</span>
+            <span class="header-value" id="runtime-value-header">00:00:00</span>
+        </div>
+    </div>
+</div>
+
+<!-- Device Control Bar with View Tabs -->
+<div class="control-bar glass-pro" id="device-control-bar">
+    <div class="control-header-compact">
+        <div class="connection-status-compact" id="connection-info">
+            <div class="status-indicator" id="status-led"></div>
+            <span id="connection-text">DISCONNECTED</span>
+            <span class="connection-type" id="connection-type-badge"></span>
+            <button id="btn-disconnect" onclick="disconnectDevice()" class="btn-disconnect-inline hidden">
+                <svg class="btn-icon-xs" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                DISCONNECT
+            </button>
+        </div>
+
+        <!-- View Tabs Inline -->
+        <div class="view-tabs-inline">
+            <button class="tab-btn-inline active" onclick="switchView('waveform')" id="tab-waveform">
+                <svg class="tab-icon-sm" viewBox="0 0 24 24"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+                WAVEFORM
+            </button>
+            <button class="tab-btn-inline" onclick="switchView('oscilloscope')" id="tab-oscilloscope">
+                <svg class="tab-icon-sm" viewBox="0 0 24 24"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
+                SCOPE
+            </button>
+            <button class="tab-btn-inline" onclick="switchView('spectrum')" id="tab-spectrum">
+                <svg class="tab-icon-sm" viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm2 4v-2H3c0 1.1.89 2 2 2zM3 9h2V7H3v2zm12 12h2v-2h-2v2zM5 21v-2H3c0 1.1.89 2 2 2zm-2-12h2V7H3v2zM9 3H7v2h2V3zM5 3c-1.1 0-2 .9-2 2h2V3zm16 0h-2v2h2c0-1.1-.9-2-2-2zm0 16c0-1.1-.9-2-2-2h2v2zm-4-16h-2v2h2V3zm4 8h-2v2h2v-2zm-8 12h-2v2h2v-2zm4-16V3h-2v2h2zM9 21v-2H7c0 1.1.89 2 2 2zm12-4h-2v2h2v-2z"/></svg>
+                SPECTRUM
+            </button>
+            <button class="tab-btn-inline" onclick="switchView('analysis')" id="tab-analysis">
+                <svg class="tab-icon-sm" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                ANALYSIS
+            </button>
+            <button class="tab-btn-inline" onclick="switchView('trigger')" id="tab-trigger">
+                <svg class="tab-icon-sm" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+                TRIGGER
+            </button>
+        </div>
+
+        <button class="collapse-toggle" id="collapse-toggle" aria-label="Toggle device panel">
+            <svg viewBox="0 0 24 24" class="collapse-icon">
+                <path d="M7 10l5 5 5-5z"/>
+            </svg>
+        </button>
+    </div>
+
+    <div class="control-content" id="device-control-content">
+        <div class="button-group-compact">
+            <button id="btn-connect-auto" onclick="connectDevice('auto')" class="btn-pro btn-primary">
+                <svg class="btn-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                AUTO CONNECT
+            </button>
+            <button id="btn-connect-usb" onclick="connectDevice('usb')" class="btn-pro btn-secondary">
+                <svg class="btn-icon" viewBox="0 0 24 24"><path d="M15 7v4h1v2h-3V5h2l-3-4-3 4h2v8H8v-2.07c.7-.37 1.2-1.08 1.2-1.93 0-1.21-.99-2.2-2.2-2.2S4.8 7.79 4.8 9c0 .85.5 1.56 1.2 1.93V13c0 1.11.89 2 2 2h3v3.05c-.71.37-1.2 1.1-1.2 1.95 0 1.21.99 2.2 2.2 2.2s2.2-.99 2.2-2.2c0-.85-.49-1.58-1.2-1.95V15h3c1.11 0 2-.89 2-2v-2h1V7h-4z"/></svg>
+                USB
+            </button>
+            <button id="btn-connect-bluetooth" onclick="connectDevice('bluetooth')" class="btn-pro btn-secondary">
+                <svg class="btn-icon" viewBox="0 0 24 24"><path d="M17.71 7.71L12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z"/></svg>
+                BLUETOOTH
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Waveform View -->
+<div id="view-waveform" class="view-container active">
+    <div class="chart-panel-pro">
+        <div class="chart-controls">
+            <div class="control-group">
+                <label title="Time per division (10 divs total). Example: 500ms/div × 10 = 5 seconds visible">TIMEBASE</label>
+                <select id="timebase-select" class="control-select" onchange="updateTimebase()" title="Zoom: Lower = closer view, Higher = wider view">
+                    <option value="50">50ms/div (0.5s total)</option>
+                    <option value="100">100ms/div (1s total)</option>
+                    <option value="200">200ms/div (2s total)</option>
+                    <option value="500" selected>500ms/div (5s total)</option>
+                    <option value="1000">1s/div (10s total)</option>
+                    <option value="2000">2s/div (20s total)</option>
+                    <option value="5000">5s/div (50s total)</option>
+                    <option value="10000">10s/div (100s total)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>DISPLAY</label>
+                <select id="display-mode" class="control-select" onchange="updateDisplayMode()">
+                    <option value="all" selected>All Signals</option>
+                    <option value="voltage">Voltage Only</option>
+                    <option value="current">Current Only</option>
+                    <option value="power">Power Only</option>
+                    <option value="vi">V+I Dual</option>
+                    <option value="vp">V+P Dual</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <button class="btn-control active" id="btn-run" onclick="toggleRun()">
+                    <svg class="btn-icon-sm" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    RUN
+                </button>
+            </div>
+            <div class="control-group">
+                <button class="btn-control" id="btn-freeze" onclick="toggleFreeze()">
+                    <svg class="btn-icon-sm" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    FREEZE
+                </button>
+            </div>
+            <div class="control-group">
+                <button class="btn-control" onclick="clearCharts()">
+                    <svg class="btn-icon-sm" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    CLEAR
+                </button>
+            </div>
+        </div>
+
+        <div class="chart-wrapper">
+            <canvas id="waveform-chart" class="chart-canvas"></canvas>
+        </div>
+
+        <div class="chart-info">
+            <span id="chart-samples">SAMPLES: 0</span>
+            <span id="chart-rate">RATE: 0 Hz</span>
+            <span id="chart-duration">DURATION: 0.0s</span>
+        </div>
+    </div>
+</div>
+
+<!-- Oscilloscope View -->
+<div id="view-oscilloscope" class="view-container">
+    <div class="chart-panel-pro">
+        <div class="chart-controls">
+            <div class="control-group">
+                <label>CH1 SCALE (V)</label>
+                <select id="v-scale" class="control-select" onchange="updateVScale()">
+                    <option value="5">5V</option>
+                    <option value="10" selected>10V</option>
+                    <option value="15">15V</option>
+                    <option value="20">20V</option>
+                    <option value="25">25V</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>CH2 SCALE (A)</label>
+                <select id="i-scale" class="control-select" onchange="updateIScale()">
+                    <option value="1">1A</option>
+                    <option value="2">2A</option>
+                    <option value="5" selected>5A</option>
+                    <option value="10">10A</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>TIME/DIV</label>
+                <select id="scope-timebase" class="control-select" onchange="updateScopeTimebase()">
+                    <option value="100">100ms/div (1s)</option>
+                    <option value="200">200ms/div (2s)</option>
+                    <option value="500" selected>500ms/div (5s)</option>
+                    <option value="1000">1s/div (10s)</option>
+                    <option value="2000">2s/div (20s)</option>
+                    <option value="5000">5s/div (50s)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>TRIGGER</label>
+                <select id="trigger-source" class="control-select">
+                    <option value="none">NONE</option>
+                    <option value="voltage">VOLTAGE</option>
+                    <option value="current">CURRENT</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <button class="btn-control active" id="btn-scope-run" onclick="toggleRun()">
+                    <svg class="btn-icon-sm" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    RUN
+                </button>
+            </div>
+            <div class="control-group">
+                <button class="btn-control" id="btn-scope-freeze" onclick="toggleFreeze()">
+                    <svg class="btn-icon-sm" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    FREEZE
+                </button>
+            </div>
+        </div>
+
+        <div class="chart-wrapper">
+            <canvas id="oscilloscope-canvas" class="chart-canvas"></canvas>
+        </div>
+
+        <div class="chart-info">
+            <span id="scope-samples">SAMPLES: 0</span>
+            <span id="scope-rate">RATE: 100 Hz</span>
+            <span id="scope-duration">DURATION: 0.0s</span>
+        </div>
+
+        <div class="spectrum-stats">
+            <div class="stat-item-pro">
+                <span class="stat-label-pro">V<sub>RMS</sub></span>
+                <span class="stat-value-pro" id="v-rms">0.000V</span>
+            </div>
+            <div class="stat-item-pro">
+                <span class="stat-label-pro">V<sub>PK</sub></span>
+                <span class="stat-value-pro" id="v-pk">0.000V</span>
+            </div>
+            <div class="stat-item-pro">
+                <span class="stat-label-pro">I<sub>RMS</sub></span>
+                <span class="stat-value-pro" id="i-rms">0.000A</span>
+            </div>
+            <div class="stat-item-pro">
+                <span class="stat-label-pro">I<sub>PK</sub></span>
+                <span class="stat-value-pro" id="i-pk">0.000A</span>
+            </div>
+            <div class="stat-item-pro">
+                <span class="stat-label-pro">FREQUENCY</span>
+                <span class="stat-value-pro" id="frequency">---</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Spectrum Analyzer View -->
+<div id="view-spectrum" class="view-container">
+    <div class="chart-panel-pro">
+        <div class="chart-controls">
+            <div class="control-group">
+                <label>SIGNAL</label>
+                <select id="fft-source" class="control-select" onchange="updateFFTSource()">
+                    <option value="voltage">Voltage</option>
+                    <option value="current">Current</option>
+                    <option value="power">Power</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>WINDOW</label>
+                <select id="fft-window" class="control-select">
+                    <option value="hann">Hann</option>
+                    <option value="hamming">Hamming</option>
+                    <option value="blackman">Blackman</option>
+                    <option value="none">Rectangular</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>FFT SIZE</label>
+                <select id="fft-size" class="control-select">
+                    <option value="256">256</option>
+                    <option value="512">512</option>
+                    <option value="1024" selected>1024</option>
+                    <option value="2048">2048</option>
+                    <option value="4096">4096</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <button class="btn-control" onclick="computeFFT()">ANALYZE</button>
+            </div>
+        </div>
+
+        <div class="chart-wrapper">
+            <canvas id="spectrum-chart" class="chart-canvas"></canvas>
+        </div>
+
+        <div class="chart-info">
+            <span id="spectrum-samples">SAMPLES: 0</span>
+            <span id="spectrum-rate">RATE: 100 Hz</span>
+            <span id="spectrum-duration">DURATION: 0.0s</span>
+        </div>
+
+        <div class="spectrum-stats">
+            <div class="stat-item-pro">
+                <span class="stat-label-pro">FUNDAMENTAL</span>
+                <span class="stat-value-pro" id="fundamental-freq">--- Hz</span>
+            </div>
+            <div class="stat-item-pro">
+                <span class="stat-label-pro">RIPPLE</span>
+                <span class="stat-value-pro" id="ripple-voltage">--- mV</span>
+            </div>
+            <div class="stat-item-pro">
+                <span class="stat-label-pro">THD</span>
+                <span class="stat-value-pro" id="thd-value">--- %</span>
+            </div>
+            <div class="stat-item-pro">
+                <span class="stat-label-pro">SNR</span>
+                <span class="stat-value-pro" id="snr-value">--- dB</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Analysis View -->
+<div id="view-analysis" class="view-container">
+    <div class="analysis-grid">
+        <div class="analysis-panel">
+            <h3>CHARGING PHASE DETECTION</h3>
+            <div class="phase-indicator">
+                <div class="phase-item">
+                    <span class="phase-label">CURRENT PHASE</span>
+                    <span class="phase-value" id="charging-phase">STANDBY</span>
+                </div>
+                <div class="phase-timeline" id="phase-timeline"></div>
+            </div>
+            <div class="phase-stats">
+                <div class="stat-row">
+                    <span>CC DURATION:</span>
+                    <span id="cc-duration">---</span>
+                </div>
+                <div class="stat-row">
+                    <span>CV DURATION:</span>
+                    <span id="cv-duration">---</span>
+                </div>
+                <div class="stat-row">
+                    <span>ESTIMATED CAPACITY:</span>
+                    <span id="est-capacity">---</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="analysis-panel">
+            <h3>PROTOCOL INFORMATION</h3>
+            <div id="protocol-details" class="protocol-details">
+                <div class="protocol-item">
+                    <span class="proto-label">DETECTED PROTOCOL</span>
+                    <span class="proto-value" id="proto-name">NONE</span>
+                </div>
+                <div class="protocol-item">
+                    <span class="proto-label">MODE</span>
+                    <span class="proto-value" id="proto-mode">---</span>
+                </div>
+                <div class="protocol-item">
+                    <span class="proto-label">D+ VOLTAGE</span>
+                    <span class="proto-value" id="dp-voltage">--- V</span>
+                </div>
+                <div class="protocol-item">
+                    <span class="proto-label">D- VOLTAGE</span>
+                    <span class="proto-value" id="dn-voltage">--- V</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="analysis-panel full-width">
+            <h3>POWER QUALITY METRICS</h3>
+            <div class="quality-grid">
+                <div class="quality-metric">
+                    <span class="metric-name">POWER FACTOR</span>
+                    <div class="metric-bar">
+                        <div class="metric-bar-fill" id="power-factor-bar" style="width: 0%"></div>
+                    </div>
+                    <span class="metric-num" id="power-factor">---</span>
+                </div>
+                <div class="quality-metric">
+                    <span class="metric-name">EFFICIENCY</span>
+                    <div class="metric-bar">
+                        <div class="metric-bar-fill" id="efficiency-bar" style="width: 0%"></div>
+                    </div>
+                    <span class="metric-num" id="efficiency">---</span>
+                </div>
+                <div class="quality-metric">
+                    <span class="metric-name">VOLTAGE STABILITY</span>
+                    <div class="metric-bar">
+                        <div class="metric-bar-fill" id="stability-bar" style="width: 0%"></div>
+                    </div>
+                    <span class="metric-num" id="stability">---</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-info" style="margin-top: 1rem;">
+        <span id="analysis-samples">SAMPLES: 0</span>
+        <span id="analysis-rate">RATE: 100 Hz</span>
+        <span id="analysis-duration">DURATION: 0.0s</span>
+    </div>
+</div>
+
+<!-- Trigger View -->
+<div id="view-trigger" class="view-container">
+    <!-- Current Protocol Detection -->
+    <div class="trigger-header glass-pro">
+        <div class="protocol-display">
+            <div class="protocol-label">DETECTED PROTOCOL</div>
+            <div class="protocol-name" id="trigger-protocol-name">NOT DETECTED</div>
+            <div class="protocol-details" id="trigger-protocol-details">Connect device to detect protocol</div>
+        </div>
+        <div class="current-metrics">
+            <div class="metric-display">
+                <span class="metric-label">VOLTAGE</span>
+                <span class="metric-value-lg" id="trigger-voltage">0.000 V</span>
+            </div>
+            <div class="metric-display">
+                <span class="metric-label">CURRENT</span>
+                <span class="metric-value-lg" id="trigger-current">0.000 A</span>
+            </div>
+            <div class="metric-display">
+                <span class="metric-label">POWER</span>
+                <span class="metric-value-lg" id="trigger-power">0.000 W</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- PD Trigger Panel -->
+    <div class="trigger-panel glass-pro" id="pd-trigger-panel">
+        <div class="trigger-panel-header">
+            <svg class="trigger-icon" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+            <h3>USB POWER DELIVERY</h3>
+            <span class="trigger-badge">PD 2.0/3.0</span>
+        </div>
+        <div class="trigger-voltages">
+            <button class="voltage-btn" onclick="triggerVoltage('pd', 5)" data-voltage="5V">
+                <span class="voltage-value">5V</span>
+                <span class="voltage-current">3.0A</span>
+            </button>
+            <button class="voltage-btn" onclick="triggerVoltage('pd', 9)" data-voltage="9V">
+                <span class="voltage-value">9V</span>
+                <span class="voltage-current">3.0A</span>
+            </button>
+            <button class="voltage-btn" onclick="triggerVoltage('pd', 12)" data-voltage="12V">
+                <span class="voltage-value">12V</span>
+                <span class="voltage-current">3.0A</span>
+            </button>
+            <button class="voltage-btn" onclick="triggerVoltage('pd', 15)" data-voltage="15V">
+                <span class="voltage-value">15V</span>
+                <span class="voltage-current">3.0A</span>
+            </button>
+            <button class="voltage-btn" onclick="triggerVoltage('pd', 20)" data-voltage="20V">
+                <span class="voltage-value">20V</span>
+                <span class="voltage-current">5.0A</span>
+            </button>
+        </div>
+        <div class="trigger-pdo-list" id="pd-pdo-list">
+            <div class="pdo-label">AVAILABLE POWER DATA OBJECTS</div>
+            <div class="pdo-items" id="pdo-items">
+                <div class="pdo-item">1. 5.00V 3.00A</div>
+                <div class="pdo-item">2. 9.00V 3.00A</div>
+                <div class="pdo-item">3. 12.00V 3.00A</div>
+                <div class="pdo-item">4. 15.00V 3.00A</div>
+                <div class="pdo-item">5. 20.00V 3.25A</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QC 2.0/3.0 Trigger Panel -->
+    <div class="trigger-panel glass-pro" id="qc-trigger-panel">
+        <div class="trigger-panel-header">
+            <svg class="trigger-icon" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+            <h3>QUALCOMM QUICK CHARGE</h3>
+            <span class="trigger-badge">QC 2.0/3.0</span>
+        </div>
+        <div class="trigger-voltages">
+            <button class="voltage-btn" onclick="triggerVoltage('qc', 5)" data-voltage="5V">
+                <span class="voltage-value">5V</span>
+                <span class="voltage-current">3.0A</span>
+            </button>
+            <button class="voltage-btn" onclick="triggerVoltage('qc', 9)" data-voltage="9V">
+                <span class="voltage-value">9V</span>
+                <span class="voltage-current">2.0A</span>
+            </button>
+            <button class="voltage-btn" onclick="triggerVoltage('qc', 12)" data-voltage="12V">
+                <span class="voltage-value">12V</span>
+                <span class="voltage-current">1.5A</span>
+            </button>
+        </div>
+        <!-- QC 3.0 Fine Adjustment -->
+        <div class="qc3-adjustment">
+            <div class="qc3-label">QC 3.0 FINE ADJUSTMENT</div>
+            <div class="qc3-controls">
+                <div class="qc3-display">
+                    <span class="qc3-range">3.6V - 12.0V</span>
+                    <span class="qc3-current-v" id="qc3-voltage">5.00 V</span>
+                </div>
+                <div class="qc3-buttons">
+                    <button class="qc3-btn qc3-minus" onclick="adjustQC3Voltage(-200)">
+                        <svg viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>
+                        -200mV
+                    </button>
+                    <button class="qc3-btn qc3-plus" onclick="adjustQC3Voltage(200)">
+                        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                        +200mV
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Other Protocols -->
+    <div class="trigger-protocols-grid">
+        <!-- Samsung AFC -->
+        <div class="trigger-panel-sm glass-pro" id="afc-trigger-panel">
+            <div class="trigger-panel-header-sm">
+                <h4>SAMSUNG AFC</h4>
+                <span class="trigger-badge-sm">Adaptive Fast Charging</span>
+            </div>
+            <div class="trigger-voltages-sm">
+                <button class="voltage-btn-sm" onclick="triggerVoltage('afc', 5)">5V</button>
+                <button class="voltage-btn-sm" onclick="triggerVoltage('afc', 9)">9V</button>
+                <button class="voltage-btn-sm" onclick="triggerVoltage('afc', 12)">12V</button>
+            </div>
+        </div>
+
+        <!-- Huawei FCP -->
+        <div class="trigger-panel-sm glass-pro" id="fcp-trigger-panel">
+            <div class="trigger-panel-header-sm">
+                <h4>HUAWEI FCP</h4>
+                <span class="trigger-badge-sm">Fast Charge Protocol</span>
+            </div>
+            <div class="trigger-voltages-sm">
+                <button class="voltage-btn-sm" onclick="triggerVoltage('fcp', 5)">5V</button>
+                <button class="voltage-btn-sm" onclick="triggerVoltage('fcp', 9)">9V</button>
+                <button class="voltage-btn-sm" onclick="triggerVoltage('fcp', 12)">12V</button>
+            </div>
+        </div>
+
+        <!-- Huawei SCP -->
+        <div class="trigger-panel-sm glass-pro" id="scp-trigger-panel">
+            <div class="trigger-panel-header-sm">
+                <h4>HUAWEI SCP</h4>
+                <span class="trigger-badge-sm">SuperCharge Protocol</span>
+            </div>
+            <div class="trigger-voltages-sm">
+                <button class="voltage-btn-sm" onclick="triggerVoltage('scp', 5)">5V</button>
+                <button class="voltage-btn-sm" onclick="triggerVoltage('scp', 9)">9V</button>
+                <button class="voltage-btn-sm" onclick="triggerVoltage('scp', 12)">12V</button>
+            </div>
+        </div>
+
+        <!-- VOOC -->
+        <div class="trigger-panel-sm glass-pro" id="vooc-trigger-panel">
+            <div class="trigger-panel-header-sm">
+                <h4>OPPO VOOC</h4>
+                <span class="trigger-badge-sm">Voltage Open Loop</span>
+            </div>
+            <div class="trigger-voltages-sm">
+                <button class="voltage-btn-sm" onclick="triggerVoltage('vooc', 5)">5V</button>
+                <button class="voltage-btn-sm" onclick="triggerVoltage('vooc', 10)">10V</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-info" style="margin-top: 1rem;">
+        <span id="trigger-samples">SAMPLES: 0</span>
+        <span id="trigger-status">STATUS: READY</span>
+        <span id="trigger-warning" style="color: #ff9933;"></span>
+    </div>
+</div>
+
+<!-- Recording Controls -->
+<div class="recording-panel glass-pro">
+    <div class="recording-controls">
+        <div class="rec-status">
+            <div class="rec-indicator" id="rec-indicator"></div>
+            <span id="rec-status-text">READY</span>
+            <span id="rec-duration">00:00:00</span>
+        </div>
+
+        <div class="button-group">
+            <button id="btn-start-recording" onclick="startRecording()" class="btn-pro btn-record">
+                <svg class="btn-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>
+                START RECORDING
+            </button>
+            <button id="btn-stop-recording" onclick="stopRecording()" class="btn-pro btn-danger hidden">
+                <svg class="btn-icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"/></svg>
+                STOP
+            </button>
+            <button onclick="exportSession()" class="btn-pro btn-secondary">
+                <svg class="btn-icon" viewBox="0 0 24 24"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"/></svg>
+                EXPORT
+            </button>
+            <button onclick="openSettings()" class="btn-pro btn-secondary">
+                <svg class="btn-icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                SETTINGS
+            </button>
+        </div>
+
+        <div class="rec-stats">
+            <div class="stat-compact">
+                <span class="stat-label-compact">SAMPLES</span>
+                <span class="stat-value-compact" id="rec-samples">0</span>
+            </div>
+            <div class="stat-compact">
+                <span class="stat-label-compact">SIZE</span>
+                <span class="stat-value-compact" id="rec-size">0 KB</span>
+            </div>
+            <div class="stat-compact">
+                <span class="stat-label-compact">RATE</span>
+                <span class="stat-value-compact" id="rec-rate">0 Hz</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard_pro.js') }}"></script>
+<script src="{{ url_for('static', filename='js/oscilloscope.js') }}"></script>
+<script src="{{ url_for('static', filename='js/spectrum.js') }}"></script>
+<script src="{{ url_for('static', filename='js/analysis.js') }}"></script>
+{% endblock %}

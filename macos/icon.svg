@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="512" cy="512" r="480" fill="url(#grad)"/>
+
+  <!-- Lightning bolt (power symbol) -->
+  <path d="M 512 150 L 400 450 L 550 450 L 450 750 L 650 500 L 500 500 Z"
+        fill="#ffffff"
+        stroke="#ffffff"
+        stroke-width="10"
+        stroke-linejoin="round"/>
+
+  <!-- Waveform -->
+  <path d="M 200 650 Q 250 600, 300 650 T 400 650 Q 450 600, 500 650 T 600 650 Q 650 600, 700 650 T 800 650"
+        fill="none"
+        stroke="#00ff88"
+        stroke-width="20"
+        stroke-linecap="round"/>
+</svg>

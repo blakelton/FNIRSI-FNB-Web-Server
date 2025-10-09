@@ -1,0 +1,424 @@
+{% extends "base_pro.html" %}
+
+{% block title %}History - FNIRSI FNB58 Professional{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <!-- Page Header -->
+    <div class="control-bar glass-pro" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary); letter-spacing: 1px;">SESSION HISTORY</h1>
+                <p style="color: var(--text-secondary); font-size: 0.85rem;">View, analyze, and export recorded sessions</p>
+            </div>
+            <button onclick="refreshSessions()" class="btn-pro btn-secondary">
+                <svg class="btn-icon" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                REFRESH
+            </button>
+        </div>
+    </div>
+
+    <!-- Sessions Grid -->
+    <div id="sessions-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem;">
+        <!-- Sessions will be loaded here -->
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="control-bar glass-pro hidden" style="text-align: center; padding: 3rem;">
+        <svg style="margin: 0 auto 1.5rem; color: var(--accent-blue);" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 11l3 3L22 4"></path>
+            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+        </svg>
+        <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-primary);">NO SESSIONS YET</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">Record a session from the dashboard to see it here</p>
+        <a href="/dashboard" class="btn-pro btn-primary">
+            <svg class="btn-icon" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+            GO TO DASHBOARD
+        </a>
+    </div>
+</div>
+
+<!-- Session Detail Modal -->
+<div id="session-modal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 1200px; width: 95%; background: var(--bg-secondary); border: 1px solid var(--border-accent); border-radius: 8px; padding: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); letter-spacing: 1px;" id="modal-title">SESSION DETAILS</h2>
+            <button onclick="closeModal()" class="btn-pro btn-secondary">
+                <svg class="btn-icon" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                CLOSE
+            </button>
+        </div>
+
+        <!-- Session Stats -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+            <div class="metric-panel-pro" style="text-align: center;">
+                <div style="font-size: 0.7rem; color: var(--text-tertiary); margin-bottom: 0.5rem; letter-spacing: 1px;">DURATION</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-blue); font-family: var(--font-display);" id="modal-duration">--</div>
+            </div>
+            <div class="metric-panel-pro" style="text-align: center;">
+                <div style="font-size: 0.7rem; color: var(--text-tertiary); margin-bottom: 0.5rem; letter-spacing: 1px;">SAMPLES</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-green); font-family: var(--font-display);" id="modal-samples">--</div>
+            </div>
+            <div class="metric-panel-pro" style="text-align: center;">
+                <div style="font-size: 0.7rem; color: var(--text-tertiary); margin-bottom: 0.5rem; letter-spacing: 1px;">ENERGY</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-purple); font-family: var(--font-display);" id="modal-energy">--</div>
+            </div>
+            <div class="metric-panel-pro" style="text-align: center;">
+                <div style="font-size: 0.7rem; color: var(--text-tertiary); margin-bottom: 0.5rem; letter-spacing: 1px;">CAPACITY</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-orange); font-family: var(--font-display);" id="modal-capacity">--</div>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-container-pro" style="margin-bottom: 2rem;">
+            <canvas id="session-chart" height="300"></canvas>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <button onclick="exportSessionCSV()" class="btn-pro btn-primary">
+                <svg class="btn-icon" viewBox="0 0 24 24"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"/></svg>
+                EXPORT CSV
+            </button>
+            <button onclick="exportSessionJSON()" class="btn-pro btn-secondary">
+                <svg class="btn-icon" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                EXPORT JSON
+            </button>
+            <button onclick="deleteCurrentSession()" class="btn-pro btn-danger" style="margin-left: auto;">
+                <svg class="btn-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                DELETE
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let sessions = [];
+let currentSession = null;
+let sessionChart = null;
+
+// Load sessions on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadSessions();
+});
+
+// Load all sessions
+async function loadSessions() {
+    try {
+        const response = await fetch('/api/sessions');
+        const result = await response.json();
+
+        if (result.success && result.sessions.length > 0) {
+            sessions = result.sessions;
+            displaySessions(sessions);
+            document.getElementById('empty-state').classList.add('hidden');
+        } else {
+            document.getElementById('sessions-container').innerHTML = '';
+            document.getElementById('empty-state').classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Failed to load sessions:', error);
+        showToast('Failed to load sessions', 'error');
+    }
+}
+
+// Display sessions
+function displaySessions(sessionsList) {
+    const container = document.getElementById('sessions-container');
+    container.innerHTML = '';
+
+    sessionsList.forEach(session => {
+        const card = createSessionCard(session);
+        container.appendChild(card);
+    });
+}
+
+// Create session card
+function createSessionCard(session) {
+    const card = document.createElement('div');
+    card.className = 'control-bar glass-pro';
+    card.style.cssText = 'cursor: pointer; transition: all 0.3s; margin-bottom: 1rem;';
+    card.onclick = () => viewSession(session.filename);
+
+    // Hover effect
+    card.onmouseenter = () => {
+        card.style.borderColor = 'var(--accent-blue)';
+        card.style.boxShadow = '0 8px 32px rgba(0, 217, 255, 0.2)';
+    };
+    card.onmouseleave = () => {
+        card.style.borderColor = 'var(--border-primary)';
+        card.style.boxShadow = 'var(--shadow-md)';
+    };
+
+    const date = new Date(session.start_time);
+    const duration = calculateDuration(session.start_time, session.end_time);
+
+    card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+            <div>
+                <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary);">
+                    ${date.toLocaleDateString()} ${date.toLocaleTimeString()}
+                </h3>
+                <div style="display: flex; gap: 1.5rem; font-size: 0.8rem; color: var(--text-secondary);">
+                    <span style="display: flex; align-items: center; gap: 0.3rem;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4zm2.5 2.1h-15V5h15v14.1zm0-16.1h-15c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
+                        </svg>
+                        ${session.samples.toLocaleString()} SAMPLES
+                    </span>
+                    <span style="display: flex; align-items: center; gap: 0.3rem;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                        </svg>
+                        ${duration}
+                    </span>
+                    <span style="display: flex; align-items: center; gap: 0.3rem; text-transform: uppercase; color: var(--accent-blue); font-weight: 600;">
+                        ${session.connection_type === 'usb' ?
+                            '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15 7v4h1v2h-3V5h2l-3-4-3 4h2v8H8v-2.07c.7-.37 1.2-1.08 1.2-1.93 0-1.21-.99-2.2-2.2-2.2S4.8 7.79 4.8 9c0 .85.5 1.56 1.2 1.93V13c0 1.11.89 2 2 2h3v3.05c-.71.37-1.2 1.1-1.2 1.95 0 1.21.99 2.2 2.2 2.2s2.2-.99 2.2-2.2c0-.85-.49-1.58-1.2-1.95V15h3c1.11 0 2-.89 2-2v-2h1V7h-4z"/></svg>' :
+                            '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.71 7.71L12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z"/></svg>'
+                        }
+                        ${session.connection_type}
+                    </span>
+                </div>
+            </div>
+            <button onclick="event.stopPropagation(); deleteSession('${session.filename}')"
+                    style="background: none; border: none; padding: 0.5rem; cursor: pointer; color: var(--text-tertiary); transition: color 0.2s;"
+                    onmouseenter="this.style.color='var(--accent-red)'"
+                    onmouseleave="this.style.color='var(--text-tertiary)'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                </svg>
+            </button>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-tertiary); padding-top: 0.75rem; border-top: 1px solid var(--border-primary);">
+            Click to view details and export
+        </div>
+    `;
+
+    return card;
+}
+
+// View session details
+async function viewSession(filename) {
+    try {
+        const response = await fetch(`/api/sessions/${filename}`);
+        const result = await response.json();
+
+        if (result.success) {
+            currentSession = result.session;
+            showSessionModal(currentSession, filename);
+        }
+    } catch (error) {
+        console.error('Failed to load session:', error);
+        showToast('Failed to load session details', 'error');
+    }
+}
+
+// Show session modal
+function showSessionModal(session, filename) {
+    const modal = document.getElementById('session-modal');
+
+    // Update title
+    const date = new Date(session.start_time);
+    document.getElementById('modal-title').textContent =
+        `Session: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+
+    // Update stats
+    const duration = calculateDuration(session.start_time, session.end_time);
+    document.getElementById('modal-duration').textContent = duration;
+    document.getElementById('modal-samples').textContent = session.stats.samples_collected.toLocaleString();
+    document.getElementById('modal-energy').textContent = session.stats.total_energy_wh.toFixed(4) + ' Wh';
+    document.getElementById('modal-capacity').textContent = (session.stats.total_capacity_ah * 1000).toFixed(2) + ' mAh';
+
+    // Draw chart
+    drawSessionChart(session.data);
+
+    // Show modal
+    modal.classList.remove('hidden');
+}
+
+// Draw session chart
+function drawSessionChart(data) {
+    const ctx = document.getElementById('session-chart');
+
+    if (sessionChart) {
+        sessionChart.destroy();
+    }
+
+    sessionChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                {
+                    label: 'Voltage (V)',
+                    data: data.map((r, i) => ({ x: i, y: r.voltage })),
+                    borderColor: '#00d9ff',
+                    borderWidth: 2,
+                    pointRadius: 0
+                },
+                {
+                    label: 'Current (A)',
+                    data: data.map((r, i) => ({ x: i, y: r.current })),
+                    borderColor: '#00ff88',
+                    borderWidth: 2,
+                    pointRadius: 0
+                },
+                {
+                    label: 'Power (W)',
+                    data: data.map((r, i) => ({ x: i, y: r.power })),
+                    borderColor: '#ff9933',
+                    borderWidth: 2,
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            scales: {
+                x: {
+                    type: 'linear',
+                    ticks: { color: '#5f6368' },
+                    grid: { color: '#2d3139' }
+                },
+                y: {
+                    ticks: { color: '#9aa0a6' },
+                    grid: { color: '#2d3139' }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: { color: '#e8eaed' }
+                }
+            }
+        }
+    });
+}
+
+// Close modal
+function closeModal() {
+    document.getElementById('session-modal').classList.add('hidden');
+    if (sessionChart) {
+        sessionChart.destroy();
+        sessionChart = null;
+    }
+}
+
+// Export session as CSV
+function exportSessionCSV() {
+    if (!currentSession) return;
+
+    const csv = convertToCSV(currentSession.data);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `session_${new Date(currentSession.start_time).toISOString()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    showToast('Session exported as CSV', 'success');
+}
+
+// Export session as JSON
+function exportSessionJSON() {
+    if (!currentSession) return;
+
+    const json = JSON.stringify(currentSession, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `session_${new Date(currentSession.start_time).toISOString()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    showToast('Session exported as JSON', 'success');
+}
+
+// Delete session
+async function deleteSession(filename) {
+    if (!confirm('Are you sure you want to delete this session?')) return;
+
+    try {
+        const response = await fetch(`/api/sessions/${filename}`, {
+            method: 'DELETE'
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            showToast('Session deleted', 'success');
+            loadSessions();
+        }
+    } catch (error) {
+        showToast('Failed to delete session', 'error');
+    }
+}
+
+// Delete current session from modal
+function deleteCurrentSession() {
+    // Get filename from current session
+    const filename = sessions.find(s =>
+        new Date(s.start_time).getTime() === new Date(currentSession.start_time).getTime()
+    )?.filename;
+
+    if (filename) {
+        deleteSession(filename);
+        closeModal();
+    }
+}
+
+// Refresh sessions
+function refreshSessions() {
+    loadSessions();
+    showToast('Sessions refreshed', 'success');
+}
+
+// Calculate duration
+function calculateDuration(start, end) {
+    const duration = (new Date(end) - new Date(start)) / 1000;
+    const hours = Math.floor(duration / 3600);
+    const minutes = Math.floor((duration % 3600) / 60);
+    const seconds = Math.floor(duration % 60);
+
+    if (hours > 0) {
+        return `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+        return `${minutes}m ${seconds}s`;
+    } else {
+        return `${seconds}s`;
+    }
+}
+
+// Convert to CSV
+function convertToCSV(data) {
+    const headers = ['timestamp', 'voltage', 'current', 'power', 'dp', 'dn', 'temperature'];
+    const rows = data.map(r => {
+        return [
+            r.timestamp || '',
+            r.voltage,
+            r.current,
+            r.power,
+            r.dp || '',
+            r.dn || '',
+            r.temperature || ''
+        ].join(',');
+    });
+
+    return [headers.join(','), ...rows].join('\n');
+}
+
+// Toast notification
+function showToast(message, type = 'info') {
+    console.log(`[${type}] ${message}`);
+    // Use common toast if available
+    if (typeof showToastPro === 'function') {
+        showToastPro(message, type);
+    }
+}
+</script>
+{% endblock %}

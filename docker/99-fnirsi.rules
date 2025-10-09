@@ -1,0 +1,19 @@
+# udev rules for FNIRSI FNB58 USB Power Meter
+# Place this file in /etc/udev/rules.d/ on the host system
+
+# FNIRSI USB devices (Vendor ID: 0716)
+# FNB58/FNB48S (Product ID: 5030, 5031)
+
+# Allow all users to access FNIRSI devices
+SUBSYSTEM=="usb", ATTR{idVendor}=="0716", ATTR{idProduct}=="5030", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0716", ATTR{idProduct}=="5031", MODE="0666", GROUP="plugdev"
+
+# Alternative: Allow specific user (replace 'username' with your username)
+# SUBSYSTEM=="usb", ATTR{idVendor}=="0716", MODE="0666", OWNER="username"
+
+# After creating this file, reload udev rules:
+# sudo udevadm control --reload-rules
+# sudo udevadm trigger
+
+# Then reconnect the device or run:
+# sudo udevadm trigger --action=change

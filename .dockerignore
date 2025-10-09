@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Sessions and exports (will be volumes)
+sessions/*.json
+exports/*.csv
+exports/*.json
+exports/*.html
+
+# Documentation (include in image)
+!README.md
+!DOCKER.md
+!CLAUDE.md
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+*.cover
+
+# Environment
+.env.local
+.env.development
+
+# Logs
+*.log
+logs/
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml

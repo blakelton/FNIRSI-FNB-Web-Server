@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - FNIRSI FNB58 Monitor{% endblock %}
+
+{% block content %}
+<!-- Connection Panel -->
+<div class="glass rounded-lg p-6 mb-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex-1">
+            <h2 class="text-2xl font-bold mb-2">Device Connection</h2>
+            <p class="text-gray-400" id="connection-type-text">Not connected</p>
+            <!-- Protocol Detection Badge -->
+            <div id="protocol-badge" class="mt-2 inline-block px-3 py-1 rounded-full text-xs font-semibold hidden">
+                <span id="protocol-name">Unknown</span>
+            </div>
+        </div>
+
+        <div class="flex gap-2">
+            <button id="btn-connect-auto" onclick="connectDevice('auto')"
+                    class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition">
+                🔌 Connect (Auto)
+            </button>
+            <button id="btn-connect-bluetooth" onclick="connectDevice('bluetooth')"
+                    class="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition">
+                🔵 Bluetooth
+            </button>
+            <button id="btn-connect-usb" onclick="connectDevice('usb')"
+                    class="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition">
+                🔌 USB
+            </button>
+            <button id="btn-disconnect" onclick="disconnectDevice()"
+                    class="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition hidden">
+                ✕ Disconnect
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Alert Panel -->
+<div id="alert-panel" class="mb-6 hidden">
+    <div class="glass rounded-lg p-4 border-l-4 border-red-500">
+        <div class="flex items-start justify-between">
+            <div class="flex-1">
+                <h3 class="text-lg font-bold text-red-400 mb-2">⚠️ Active Alerts</h3>
+                <div id="alert-list" class="space-y-2"></div>
+            </div>
+            <button onclick="clearAlerts()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition">
+                Clear All
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Real-time Metrics -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <!-- Voltage Card -->
+    <div class="metric-card voltage-card rounded-lg p-6">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-yellow-400 text-sm uppercase font-semibold tracking-wide">Voltage</h3>
+            <span class="text-3xl">⚡</span>
+        </div>
+        <div class="text-5xl font-bold mb-1 text-yellow-300" id="voltage-value">0.00000</div>
+        <div class="text-sm text-yellow-200 font-medium">Volts</div>
+        <div class="mt-3 pt-3 border-t border-yellow-500/20">
+            <div class="flex justify-between text-xs text-yellow-300/70">
+                <span>Min: <span id="voltage-min" class="font-semibold text-yellow-300">0.00</span>V</span>
+                <span>Max: <span id="voltage-max" class="font-semibold text-yellow-300">0.00</span>V</span>
+            </div>
+            <div class="mt-2 text-xs text-yellow-300/70">
+                <span>Trend: <span id="voltage-trend" class="font-semibold">─</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Card -->
+    <div class="metric-card current-card rounded-lg p-6">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-purple-400 text-sm uppercase font-semibold tracking-wide">Current</h3>
+            <span class="text-3xl">🔋</span>
+        </div>
+        <div class="text-5xl font-bold mb-1 text-purple-300" id="current-value">0.00000</div>
+        <div class="text-sm text-purple-200 font-medium">Amperes</div>
+        <div class="mt-3 pt-3 border-t border-purple-500/20">
+            <div class="flex justify-between text-xs text-purple-300/70">
+                <span>Min: <span id="current-min" class="font-semibold text-purple-300">0.00</span>A</span>
+                <span>Max: <span id="current-max" class="font-semibold text-purple-300">0.00</span>A</span>
+            </div>
+            <div class="mt-2 text-xs text-purple-300/70">
+                <span>Trend: <span id="current-trend" class="font-semibold">─</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Power Card -->
+    <div class="metric-card power-card rounded-lg p-6">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-red-400 text-sm uppercase font-semibold tracking-wide">Power</h3>
+            <span class="text-3xl">💡</span>
+        </div>
+        <div class="text-5xl font-bold mb-1 text-red-300" id="power-value">0.00000</div>
+        <div class="text-sm text-red-200 font-medium">Watts</div>
+        <div class="mt-3 pt-3 border-t border-red-500/20">
+            <div class="flex justify-between text-xs text-red-300/70">
+                <span>Max: <span id="power-max" class="font-semibold text-red-300">0.00</span>W</span>
+                <span>Avg: <span id="power-avg" class="font-semibold text-red-300">0.00</span>W</span>
+            </div>
+            <div class="mt-2 text-xs text-red-300/70">
+                <span>Trend: <span id="power-trend" class="font-semibold">─</span></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recording Controls -->
+<div class="glass rounded-lg p-6 mb-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h3 class="text-lg font-bold">Recording Session</h3>
+            <p class="text-sm text-gray-400" id="recording-status">Not recording</p>
+        </div>
+        
+        <div class="flex gap-2">
+            <button id="btn-start-recording" onclick="startRecording()" 
+                    class="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition">
+                ● Start Recording
+            </button>
+            <button id="btn-stop-recording" onclick="stopRecording()" 
+                    class="px-6 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition hidden">
+                ■ Stop Recording
+            </button>
+            <button onclick="exportToCSV()" 
+                    class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+                📥 Export CSV
+            </button>
+        </div>
+    </div>
+    
+    <!-- Statistics -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+        <div>
+            <div class="text-xs text-gray-400 uppercase">Samples</div>
+            <div class="text-lg font-bold" id="stat-samples">0</div>
+        </div>
+        <div>
+            <div class="text-xs text-gray-400 uppercase">Energy</div>
+            <div class="text-lg font-bold" id="stat-energy">0.0000 Wh</div>
+        </div>
+        <div>
+            <div class="text-xs text-gray-400 uppercase">Capacity</div>
+            <div class="text-lg font-bold" id="stat-capacity">0.0000 Ah</div>
+        </div>
+        <div>
+            <div class="text-xs text-gray-400 uppercase">Duration</div>
+            <div class="text-lg font-bold" id="stat-duration">00:00</div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Voltage Chart -->
+    <div class="chart-container">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-yellow-400">⚡ Voltage Over Time</h3>
+            <span class="text-xs text-gray-400">Real-time</span>
+        </div>
+        <canvas id="voltage-chart" height="250"></canvas>
+    </div>
+
+    <!-- Current Chart -->
+    <div class="chart-container">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-purple-400">🔋 Current Over Time</h3>
+            <span class="text-xs text-gray-400">Real-time</span>
+        </div>
+        <canvas id="current-chart" height="250"></canvas>
+    </div>
+
+    <!-- Power Chart -->
+    <div class="chart-container">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-red-400">💡 Power Over Time</h3>
+            <span class="text-xs text-gray-400">Real-time</span>
+        </div>
+        <canvas id="power-chart" height="250"></canvas>
+    </div>
+
+    <!-- Combined Chart -->
+    <div class="chart-container">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-cyan-400">📊 Combined Metrics</h3>
+            <span class="text-xs text-gray-400">Real-time</span>
+        </div>
+        <canvas id="combined-chart" height="250"></canvas>
+    </div>
+</div>
+
+<!-- Additional Info -->
+<div class="glass rounded-lg p-6 mt-6">
+    <h3 class="text-lg font-bold mb-4">Additional Data</h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+            <div class="text-xs text-gray-400 uppercase">D+ Voltage</div>
+            <div class="text-lg font-bold" id="dp-value">0.000 V</div>
+        </div>
+        <div>
+            <div class="text-xs text-gray-400 uppercase">D- Voltage</div>
+            <div class="text-lg font-bold" id="dn-value">0.000 V</div>
+        </div>
+        <div>
+            <div class="text-xs text-gray-400 uppercase">Temperature</div>
+            <div class="text-lg font-bold" id="temp-value">0.0 °C</div>
+        </div>
+        <div>
+            <div class="text-xs text-gray-400 uppercase">Sample Rate</div>
+            <div class="text-lg font-bold" id="sample-rate">0 Hz</div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,23 @@
+# Core Flask
+Flask==3.0.0
+Flask-SocketIO==5.3.6
+Flask-CORS==4.0.0
+
+# USB Communication
+pyusb==1.2.1
+libusb1==3.1.0
+
+# Bluetooth Communication
+bleak>=0.20.0
+
+# Data Processing
+numpy>=1.26.0
+pandas>=2.2.0
+
+# Utilities
+python-dotenv==1.0.0
+python-dateutil==2.8.2
+
+# Optional but recommended
+# eventlet==0.33.3  # For better WebSocket performance
+# gevent==23.9.1    # Alternative to eventlet

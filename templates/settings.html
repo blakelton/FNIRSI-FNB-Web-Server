@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - FNIRSI FNB58 Monitor{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold mb-8">Settings</h1>
+    
+    <!-- Connection Settings -->
+    <div class="glass rounded-lg p-6 mb-6">
+        <h2 class="text-xl font-bold mb-4">Connection Settings</h2>
+        
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-2">Bluetooth Device Address</label>
+                <input type="text" id="bt-address" placeholder="98:DA:B0:08:A1:82" 
+                       class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500">
+                <p class="text-sm text-gray-400 mt-1">Leave empty to auto-detect</p>
+            </div>
+            
+            <div>
+                <button onclick="scanBluetooth()" 
+                        class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+                    🔍 Scan for Bluetooth Devices
+                </button>
+            </div>
+            
+            <div id="bt-devices" class="hidden">
+                <label class="block text-sm font-medium mb-2">Found Devices:</label>
+                <div id="bt-devices-list" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Data Collection Settings -->
+    <div class="glass rounded-lg p-6 mb-6">
+        <h2 class="text-xl font-bold mb-4">Data Collection</h2>
+        
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-2">
+                    Maximum Data Points to Keep in Memory
+                </label>
+                <input type="number" id="max-points" value="10000" min="100" max="50000" step="100"
+                       class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500">
+            </div>
+            
+            <div>
+                <label class="flex items-center">
+                    <input type="checkbox" id="auto-export" class="mr-2">
+                    <span>Automatically export data every hour</span>
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Display Settings -->
+    <div class="glass rounded-lg p-6 mb-6">
+        <h2 class="text-xl font-bold mb-4">Display Settings</h2>
+        
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-2">Decimal Places</label>
+                <select id="decimal-places" 
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500">
+                    <option value="3">3 (0.000)</option>
+                    <option value="4">4 (0.0000)</option>
+                    <option value="5" selected>5 (0.00000)</option>
+                    <option value="6">6 (0.000000)</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium mb-2">Chart Update Rate</label>
+                <select id="chart-rate" 
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500">
+                    <option value="realtime">Real-time (every reading)</option>
+                    <option value="100ms" selected>Every 100ms</option>
+                    <option value="500ms">Every 500ms</option>
+                    <option value="1s">Every 1 second</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Alert Settings -->
+    <div class="glass rounded-lg p-6 mb-6">
+        <h2 class="text-xl font-bold mb-4">Alerts & Thresholds</h2>
+        
+        <div class="space-y-4">
+            <div>
+                <label class="flex items-center">
+                    <input type="checkbox" id="enable-alerts" class="mr-2">
+                    <span>Enable threshold alerts</span>
+                </label>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Max Voltage (V)</label>
+                    <input type="number" id="alert-voltage" value="28" step="0.1"
+                           class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Max Current (A)</label>
+                    <input type="number" id="alert-current" value="7" step="0.1"
+                           class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Max Power (W)</label>
+                    <input type="number" id="alert-power" value="120" step="1"
+                           class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Save Button -->
+    <div class="flex justify-end gap-4">
+        <button onclick="resetSettings()" 
+                class="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg transition">
+            Reset to Defaults
+        </button>
+        <button onclick="saveSettings()" 
+                class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition">
+            Save Settings
+        </button>
+    </div>
+</div>
+
+<script>
+// Scan for Bluetooth devices
+async function scanBluetooth() {
+    try {
+        showToast('Scanning for Bluetooth devices...', 'info');
+        
+        const result = await apiRequest('/api/scan-bluetooth');
+        
+        if (result.success && result.devices.length > 0) {
+            const devicesDiv = document.getElementById('bt-devices');
+            const devicesList = document.getElementById('bt-devices-list');
+            
+            devicesList.innerHTML = '';
+            
+            result.devices.forEach(device => {
+                const deviceEl = document.createElement('div');
+                deviceEl.className = 'p-3 bg-gray-700 rounded-lg hover:bg-gray-600 cursor-pointer';
+                deviceEl.innerHTML = `
+                    <div class="font-semibold">${device.name}</div>
+                    <div class="text-sm text-gray-400">${device.address}</div>
+                    ${device.rssi ? `<div class="text-xs text-gray-500">RSSI: ${device.rssi}</div>` : ''}
+                `;
+                deviceEl.onclick = () => {
+                    document.getElementById('bt-address').value = device.address;
+                    showToast('Device selected', 'success');
+                };
+                devicesList.appendChild(deviceEl);
+            });
+            
+            devicesDiv.classList.remove('hidden');
+            showToast(`Found ${result.devices.length} device(s)`, 'success');
+        } else {
+            showToast('No devices found', 'warning');
+        }
+    } catch (error) {
+        showToast(`Scan failed: ${error.message}`, 'error');
+    }
+}
+
+// Save settings
+function saveSettings() {
+    const settings = {
+        btAddress: document.getElementById('bt-address').value,
+        maxPoints: parseInt(document.getElementById('max-points').value),
+        autoExport: document.getElementById('auto-export').checked,
+        decimalPlaces: parseInt(document.getElementById('decimal-places').value),
+        chartRate: document.getElementById('chart-rate').value,
+        enableAlerts: document.getElementById('enable-alerts').checked,
+        alertVoltage: parseFloat(document.getElementById('alert-voltage').value),
+        alertCurrent: parseFloat(document.getElementById('alert-current').value),
+        alertPower: parseFloat(document.getElementById('alert-power').value)
+    };
+    
+    localStorage.setItem('fnirsi-settings', JSON.stringify(settings));
+    showToast('Settings saved', 'success');
+}
+
+// Reset settings
+function resetSettings() {
+    localStorage.removeItem('fnirsi-settings');
+    location.reload();
+}
+
+// Load settings on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('fnirsi-settings');
+    if (saved) {
+        const settings = JSON.parse(saved);
+        
+        if (settings.btAddress) document.getElementById('bt-address').value = settings.btAddress;
+        if (settings.maxPoints) document.getElementById('max-points').value = settings.maxPoints;
+        if (settings.autoExport) document.getElementById('auto-export').checked = settings.autoExport;
+        if (settings.decimalPlaces) document.getElementById('decimal-places').value = settings.decimalPlaces;
+        if (settings.chartRate) document.getElementById('chart-rate').value = settings.chartRate;
+        if (settings.enableAlerts) document.getElementById('enable-alerts').checked = settings.enableAlerts;
+        if (settings.alertVoltage) document.getElementById('alert-voltage').value = settings.alertVoltage;
+        if (settings.alertCurrent) document.getElementById('alert-current').value = settings.alertCurrent;
+        if (settings.alertPower) document.getElementById('alert-power').value = settings.alertPower;
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FNIRSI FNB58 Monitor{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    
+    <style>
+        /* Dark theme colors */
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #151b2e;
+            --bg-tertiary: #1f2937;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --purple: #a855f7;
+            --cyan: #06b6d4;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0e1a 0%, #1a1f35 100%);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated background particles */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(6, 182, 212, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        main {
+            position: relative;
+            z-index: 1;
+        }
+
+        .glass {
+            background: rgba(21, 27, 46, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(21, 27, 46, 0.9) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+            transform: rotate(45deg);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            border-color: rgba(59, 130, 246, 0.6);
+            box-shadow: 0 20px 60px rgba(59, 130, 246, 0.3);
+        }
+
+        .metric-card.voltage-card {
+            background: linear-gradient(135deg, rgba(234, 179, 8, 0.15) 0%, rgba(21, 27, 46, 0.9) 100%);
+            border-color: rgba(234, 179, 8, 0.3);
+        }
+
+        .metric-card.voltage-card:hover {
+            border-color: rgba(234, 179, 8, 0.6);
+            box-shadow: 0 20px 60px rgba(234, 179, 8, 0.3);
+        }
+
+        .metric-card.current-card {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(21, 27, 46, 0.9) 100%);
+            border-color: rgba(168, 85, 247, 0.3);
+        }
+
+        .metric-card.current-card:hover {
+            border-color: rgba(168, 85, 247, 0.6);
+            box-shadow: 0 20px 60px rgba(168, 85, 247, 0.3);
+        }
+
+        .metric-card.power-card {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(21, 27, 46, 0.9) 100%);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .metric-card.power-card:hover {
+            border-color: rgba(239, 68, 68, 0.6);
+            box-shadow: 0 20px 60px rgba(239, 68, 68, 0.3);
+        }
+
+        .pulse-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                box-shadow: 0 0 0 0 currentColor;
+            }
+            50% {
+                opacity: 0.5;
+                box-shadow: 0 0 20px 8px currentColor;
+            }
+        }
+
+        /* Neon glow effect */
+        .neon-glow {
+            text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
+            animation: neon-flicker 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes neon-flicker {
+            0%, 100% { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor; }
+            50% { text-shadow: 0 0 5px currentColor, 0 0 10px currentColor, 0 0 15px currentColor; }
+        }
+
+        /* Button enhancements */
+        button {
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        button:hover {
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        button:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        /* Chart container enhancements */
+        .chart-container {
+            position: relative;
+            padding: 1.5rem;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 0.75rem;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .chart-container:hover {
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 10px 40px rgba(59, 130, 246, 0.2);
+        }
+
+        /* Value update flash */
+        @keyframes value-flash {
+            0%, 100% { background-color: transparent; }
+            50% { background-color: rgba(59, 130, 246, 0.2); }
+        }
+
+        .value-updated {
+            animation: value-flash 0.5s ease-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Navigation -->
+    <nav class="glass border-b border-gray-700 sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <span class="text-2xl">⚡</span>
+                    <h1 class="text-xl font-bold">FNIRSI FNB58 Monitor</h1>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div id="connection-status" class="flex items-center space-x-2">
+                        <span class="pulse-dot w-3 h-3 bg-gray-500 rounded-full"></span>
+                        <span class="text-sm text-gray-400">Disconnected</span>
+                    </div>
+                    
+                    <div class="hidden md:flex space-x-2">
+                        <a href="/" class="px-4 py-2 rounded-lg hover:bg-gray-700 transition">Dashboard</a>
+                        <a href="/history" class="px-4 py-2 rounded-lg hover:bg-gray-700 transition">History</a>
+                        <a href="/settings" class="px-4 py-2 rounded-lg hover:bg-gray-700 transition">Settings</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+    
+    <!-- Common JavaScript -->
+    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>
