@@ -60,17 +60,31 @@ docker run -d -p 5000:5000 \
 
 #### Installation
 
-1. **Clone or download this project**
+1. **Clone the repository**
 ```bash
-cd fnirsi-web-monitor
+git clone https://github.com/RedThoroughbred/FNB58-MacOS.git
+cd FNB58-MacOS
 ```
 
-2. **Install Python dependencies**
+2. **Create and activate virtual environment** (recommended)
+```bash
+# Create virtual environment
+python3 -m venv venv
+
+# Activate it
+# macOS/Linux:
+source venv/bin/activate
+
+# Windows:
+venv\Scripts\activate
+```
+
+3. **Install Python dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-3. **For USB support on macOS/Linux**, you may need libusb:
+4. **For USB support on macOS/Linux**, you may need libusb:
 ```bash
 # macOS
 brew install libusb
@@ -82,14 +96,14 @@ sudo apt-get install libusb-1.0-0-dev
 sudo dnf install libusb-devel
 ```
 
-4. **Run the application**
+5. **Run the application**
 ```bash
-python app.py
+python start.py
 ```
 
-5. **Open your browser**
+6. **Open your browser**
 ```
-http://localhost:5000
+http://localhost:5001
 ```
 
 ## 📖 Usage
