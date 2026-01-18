@@ -22,14 +22,30 @@
                 BLUETOOTH DEVICES
             </h2>
 
+            <!-- Manual Address Entry -->
+            <div class="setting-item-pro" style="margin-bottom: 0.5rem;">
+                <label class="setting-label-pro">DEVICE ADDRESS (MANUAL)</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="bt-address" placeholder="98:DA:B0:10:7C:77" class="setting-input-pro" style="flex: 1; font-family: monospace;">
+                    <button onclick="connectManualAddress()" class="btn-pro btn-success" style="padding: 0.5rem 1rem;">
+                        CONNECT
+                    </button>
+                </div>
+                <div style="font-size: 0.65rem; color: var(--text-tertiary); margin-top: 0.25rem;">
+                    Enter address if device is already paired to system Bluetooth
+                </div>
+            </div>
+
+            <div style="text-align: center; color: var(--text-tertiary); font-size: 0.7rem; margin: 0.5rem 0;">— OR —</div>
+
             <button onclick="scanBluetooth()" id="btn-scan" class="btn-pro btn-primary" style="width: 100%; margin-bottom: 0.65rem;">
                 <svg class="btn-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                SCAN FOR DEVICES
+                SCAN FOR UNPAIRED DEVICES
             </button>
 
             <div id="scan-results" style="display: flex; flex-direction: column; gap: 0.5rem; min-height: 70px;">
                 <div style="text-align: center; color: var(--text-tertiary); font-size: 0.75rem; padding: 1.25rem 0;">
-                    Click scan to find devices
+                    Scan finds unpaired devices only. Use manual entry for paired devices.
                 </div>
             </div>
         </div>
@@ -251,7 +267,7 @@ async function scanBluetooth() {
                 deviceCard.innerHTML = `
                     <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem; font-size: 0.85rem;">${device.name || 'Unknown Device'}</div>
                     <div style="font-size: 0.75rem; color: var(--text-tertiary); font-family: monospace;">${device.address}</div>
-                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Signal: ${device.rssi} dBm</div>
+                    ${device.rssi ? `<div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Signal: ${device.rssi} dBm</div>` : ''}
                 `;
                 resultsDiv.appendChild(deviceCard);
             });
@@ -270,6 +286,33 @@ async function scanBluetooth() {
 function connectBluetoothDevice(address) {
     window.location.href = '/dashboard?connect=bluetooth&address=' + address;
 }
+
+// Connect using manually entered address
+function connectManualAddress() {
+    const address = document.getElementById('bt-address').value.trim();
+    if (!address) {
+        alert('Please enter a Bluetooth device address');
+        return;
+    }
+    // Validate address format (XX:XX:XX:XX:XX:XX)
+    const addressPattern = /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/;
+    if (!addressPattern.test(address)) {
+        alert('Invalid address format. Use format: XX:XX:XX:XX:XX:XX');
+        return;
+    }
+    // Save to localStorage for future use
+    localStorage.setItem('fnirsi_bt_address', address);
+    // Navigate to dashboard and connect
+    window.location.href = '/dashboard?connect=bluetooth&address=' + address;
+}
+
+// Load saved address on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const savedAddress = localStorage.getItem('fnirsi_bt_address');
+    if (savedAddress) {
+        document.getElementById('bt-address').value = savedAddress;
+    }
+});
 
 // Save display settings
 function saveDisplaySettings() {

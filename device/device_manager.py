@@ -63,7 +63,7 @@ class DeviceManager:
                 print("Attempting Bluetooth connection...")
                 self.reader = BluetoothReader(
                     device_address=kwargs.get('device_address'),
-                    device_name=kwargs.get('device_name', 'FNB58')
+                    device_name=kwargs.get('device_name')  # None = accept any FNIRSI device
                 )
                 self.reader.connect()
                 self.connection_type = 'bluetooth'

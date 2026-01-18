@@ -55,3 +55,18 @@ sessions/
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+
+# Package files
+!requirements.txt
+!requirements-minimal.txt
+!pyproject.toml
+!package.json
+!manifest.json
+
+# Documentation build
+docs/_build/

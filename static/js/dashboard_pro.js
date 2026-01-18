@@ -21,7 +21,27 @@ document.addEventListener('DOMContentLoaded', () => {
     connectWebSocket();
     checkConnectionStatus();
     initializeEventListeners();
+
+    // Check for auto-connect URL parameters (from settings page)
+    handleAutoConnect();
 });
+
+// Handle auto-connect from URL parameters
+function handleAutoConnect() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const connectMode = urlParams.get('connect');
+    const deviceAddress = urlParams.get('address');
+
+    if (connectMode) {
+        console.log(`Auto-connecting: mode=${connectMode}, address=${deviceAddress}`);
+        // Clear URL parameters to prevent reconnect on refresh
+        window.history.replaceState({}, document.title, window.location.pathname);
+        // Connect with slight delay to allow UI to initialize
+        setTimeout(() => {
+            connectDevice(connectMode, deviceAddress);
+        }, 500);
+    }
+}
 
 // Initialize all charts
 function initChartsPro() {
@@ -146,13 +166,18 @@ function initializeEventListeners() {
 }
 
 // Connect to device
-async function connectDevice(mode) {
+async function connectDevice(mode, deviceAddress = null) {
     try {
         showToastPro(`Connecting via ${mode.toUpperCase()}...`, 'info');
 
+        const payload = { mode };
+        if (deviceAddress) {
+            payload.device_address = deviceAddress;
+        }
+
         const result = await apiRequest('/api/connect', {
             method: 'POST',
-            body: JSON.stringify({ mode })
+            body: JSON.stringify(payload)
         });
 
         if (result.success) {

@@ -21,11 +21,12 @@ config['development'].init_app(app)
 # Enable CORS
 CORS(app)
 
-# Initialize SocketIO with extended timeout and ping settings
+# Initialize SocketIO with threading mode for compatibility with Bluetooth asyncio
+# Note: eventlet doesn't work well with asyncio (used by BluetoothReader)
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
-    async_mode='eventlet',
+    async_mode='threading',  # Use threading mode for Bluetooth compatibility
     ping_timeout=60,  # Increase timeout before disconnecting inactive client
     ping_interval=25,  # Send ping every 25 seconds to keep connection alive
     logger=False,

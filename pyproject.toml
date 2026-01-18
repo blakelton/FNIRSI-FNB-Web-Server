@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fnirsi-web-monitor"
+version = "1.0.0"
+description = "Web-based monitoring application for FNIRSI USB power meters"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+authors = [
+    {name = "FNIRSI Web Monitor Contributors"}
+]
+keywords = ["fnirsi", "usb", "power-meter", "monitoring", "flask"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Framework :: Flask",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: System :: Hardware",
+    "Topic :: System :: Monitoring",
+]
+
+dependencies = [
+    "Flask>=3.0.0",
+    "pyusb>=1.2.1",
+]
+
+[project.optional-dependencies]
+full = [
+    "Flask-SocketIO>=5.3.6",
+    "Flask-CORS>=4.0.0",
+    "eventlet>=0.40.3",
+    "libusb1>=3.1.0",
+    "bleak>=0.20.0",
+    "numpy>=1.26.0",
+    "pandas>=2.2.0",
+    "python-dotenv>=1.0.0",
+    "python-dateutil>=2.8.2",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/fnirsi-web-monitor"
+Documentation = "https://github.com/yourusername/fnirsi-web-monitor#readme"
+Repository = "https://github.com/yourusername/fnirsi-web-monitor.git"
+Issues = "https://github.com/yourusername/fnirsi-web-monitor/issues"
+
+[project.scripts]
+fnirsi-monitor = "fnb48p_monitor:main"
+
+[tool.setuptools]
+py-modules = ["fnb48p_monitor", "app", "config"]
+packages = ["device"]
+
+[tool.setuptools.package-data]
+"*" = ["templates/*.html", "static/**/*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"

@@ -13,10 +13,20 @@ from datetime import datetime
 
 class USBReader:
     """USB HID communication with FNIRSI devices"""
-    
-    def __init__(self, vendor_id=0x0716, product_ids=None):
+
+    # Supported FNIRSI devices: (vendor_id, product_id)
+    SUPPORTED_DEVICES = [
+        (0x2e3c, 0x0049),  # FNIRSI FNB48P / FNB48S
+        (0x2e3c, 0x5558),  # FNIRSI FNB58
+        (0x0483, 0x003a),  # FNIRSI FNB48 (older)
+        (0x0483, 0x003b),  # FNIRSI C1
+        (0x0716, 0x5030),  # WITRN U2p
+        (0x0716, 0x5031),  # WITRN variant
+    ]
+
+    def __init__(self, vendor_id=None, product_ids=None):
         self.vendor_id = vendor_id
-        self.product_ids = product_ids or [0x5030, 0x5031]
+        self.product_ids = product_ids
         self.device = None
         self.ep_in = None
         self.ep_out = None
@@ -29,28 +39,46 @@ class USBReader:
         
     def connect(self):
         """Connect to USB device"""
-        # Find device
-        for product_id in self.product_ids:
-            self.device = usb.core.find(idVendor=self.vendor_id, idProduct=product_id)
-            if self.device is not None:
-                break
-        
+        # Find device - try specific IDs first if provided, otherwise scan all supported
+        if self.vendor_id and self.product_ids:
+            for product_id in self.product_ids:
+                self.device = usb.core.find(idVendor=self.vendor_id, idProduct=product_id)
+                if self.device is not None:
+                    break
+        else:
+            # Scan all supported devices
+            for vendor_id, product_id in self.SUPPORTED_DEVICES:
+                self.device = usb.core.find(idVendor=vendor_id, idProduct=product_id)
+                if self.device is not None:
+                    print(f"Found device: VID=0x{vendor_id:04x} PID=0x{product_id:04x}")
+                    break
+
         if self.device is None:
             raise ConnectionError("FNIRSI device not found. Make sure it's connected via USB.")
-        
-        # Detach kernel driver if necessary
-        if self.device.is_kernel_driver_active(0):
-            try:
-                self.device.detach_kernel_driver(0)
-            except usb.core.USBError:
-                pass
-        
+
+        # Reset the device first (critical for proper initialization)
+        try:
+            self.device.reset()
+            print("Device reset successful")
+        except usb.core.USBError as e:
+            print(f"Warning: Device reset failed: {e}")
+
+        # Detach kernel driver from ALL interfaces (critical for HID devices)
+        for cfg in self.device:
+            for intf in cfg:
+                if self.device.is_kernel_driver_active(intf.bInterfaceNumber):
+                    try:
+                        self.device.detach_kernel_driver(intf.bInterfaceNumber)
+                        print(f"Detached kernel driver from interface {intf.bInterfaceNumber}")
+                    except usb.core.USBError as e:
+                        print(f"Warning: Could not detach kernel driver from interface {intf.bInterfaceNumber}: {e}")
+
         # Set configuration
         try:
             self.device.set_configuration()
         except usb.core.USBError:
             pass
-        
+
         # Get endpoints
         cfg = self.device.get_active_configuration()
         intf = cfg[(0, 0)]
@@ -68,12 +96,34 @@ class USBReader:
         if self.ep_in is None or self.ep_out is None:
             raise ConnectionError("Could not find USB endpoints")
         
-        # Detect if FNB58 or FNB48S (slower refresh rate)
+        # Detect device type for appropriate refresh rate
         product_id = self.device.idProduct
-        self.is_fnb58 = product_id == 0x5031
-        
+        vendor_id = self.device.idVendor
+        # FNB58 and FNB48S (vendor 0x2e3c) need different protocol
+        self.is_fnb58_or_fnb48s = (vendor_id == 0x2e3c)
+        print(f"Device type: {'FNB58/FNB48S' if self.is_fnb58_or_fnb48s else 'FNB48/C1'}")
+
+        # Send initialization handshake (required to start data streaming)
+        self._send_init_handshake()
+
         self.is_connected = True
         return True
+
+    def _send_init_handshake(self):
+        """Send initialization commands to start data streaming"""
+        try:
+            # Initial setup commands
+            self.ep_out.write(b"\xaa\x81" + b"\x00" * 61 + b"\x8e")
+            self.ep_out.write(b"\xaa\x82" + b"\x00" * 61 + b"\x96")
+
+            # Request data command differs by device type
+            if self.is_fnb58_or_fnb48s:
+                self.ep_out.write(b"\xaa\x82" + b"\x00" * 61 + b"\x96")
+            else:
+                self.ep_out.write(b"\xaa\x83" + b"\x00" * 61 + b"\x9e")
+            print("Initialization handshake sent")
+        except Exception as e:
+            print(f"Warning: Handshake failed: {e}")
     
     def start_reading(self, callback=None):
         """Start reading data in background thread"""
@@ -95,32 +145,33 @@ class USBReader:
         """Main reading loop - runs in background thread"""
         # Initial delay
         time.sleep(0.1)
-        
-        # Refresh interval depends on device type
-        refresh = 1.0 if self.is_fnb58 else 0.003
+
+        # Refresh interval: 1s for FNB58/FNB48S, 3ms for FNB48/C1
+        refresh = 1.0 if self.is_fnb58_or_fnb48s else 0.003
         continue_time = time.time() + refresh
-        
+
         while self.is_reading:
             try:
                 # Read data packet
                 data = self.ep_in.read(size_or_buffer=64, timeout=5000)
-                
+
                 # Decode the packet
                 readings = self._decode_packet(data)
-                
+
                 # Store in buffer
                 for reading in readings:
                     self.data_buffer.append(reading)
-                    
+
                     # Call callback if provided
                     if self.data_callback:
                         self.data_callback(reading)
-                
+
                 # Send keep-alive/request more data
                 if time.time() >= continue_time:
                     continue_time = time.time() + refresh
+                    # Keep-alive command (same for all devices)
                     self.ep_out.write(b"\xaa\x83" + b"\x00" * 61 + b"\x9e")
-                    
+
             except usb.core.USBError as e:
                 if self.is_reading:  # Only print if we're still supposed to be reading
                     print(f"USB Error: {e}")
@@ -133,14 +184,18 @@ class USBReader:
         """Decode data packet into readings"""
         readings = []
         timestamp = datetime.now()
-        
-        # Each packet contains 4 samples at offsets 1, 17, 33, 49
-        offsets = [1, 17, 33, 49]
-        
-        for i, offset in enumerate(offsets):
+
+        # Check packet type - byte 1 should be 0x04 for data packets
+        if len(data) < 64 or data[1] != 0x04:
+            return readings  # Ignore non-data packets
+
+        # Each packet contains 4 samples, each 15 bytes, starting at offset 2
+        # Layout: [0xaa][type][sample0 15B][sample1 15B][sample2 15B][sample3 15B][unknown][crc]
+        for i in range(4):
+            offset = 2 + (15 * i)
             if offset + 14 >= len(data):
                 break
-            
+
             # Voltage (4 bytes, little-endian, /100000)
             voltage = (
                 data[offset + 3] * 256 * 256 * 256 +
@@ -148,7 +203,7 @@ class USBReader:
                 data[offset + 1] * 256 +
                 data[offset + 0]
             ) / 100000.0
-            
+
             # Current (4 bytes, little-endian, /100000)
             current = (
                 data[offset + 7] * 256 * 256 * 256 +
@@ -156,19 +211,19 @@ class USBReader:
                 data[offset + 5] * 256 +
                 data[offset + 4]
             ) / 100000.0
-            
+
             # D+ voltage (2 bytes, little-endian, /1000)
             dp = (data[offset + 8] + data[offset + 9] * 256) / 1000.0
-            
+
             # D- voltage (2 bytes, little-endian, /1000)
             dn = (data[offset + 10] + data[offset + 11] * 256) / 1000.0
-            
-            # Temperature (2 bytes, little-endian, /10)
+
+            # Temperature (2 bytes, little-endian, /10) - at offset 13-14
             temp = (data[offset + 13] + data[offset + 14] * 256) / 10.0
-            
+
             # Calculate power
             power = voltage * current
-            
+
             reading = {
                 'timestamp': timestamp.isoformat(),
                 'voltage': round(voltage, 5),
@@ -179,9 +234,9 @@ class USBReader:
                 'temperature': round(temp, 1),
                 'sample': i
             }
-            
+
             readings.append(reading)
-        
+
         return readings
     
     def disconnect(self):
@@ -191,8 +246,8 @@ class USBReader:
         if self.device:
             try:
                 usb.util.dispose_resources(self.device)
-            except:
-                pass
+            except usb.core.USBError:
+                pass  # Device may already be disconnected
         
         self.is_connected = False
     
