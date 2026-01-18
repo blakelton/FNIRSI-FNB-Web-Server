@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-01-17
+
+### Added
+- Bluetooth support for FNB48, FNB48S, FNB48P, C1 devices
+- Multi-device auto-detection (FNB58, FNB48, FNB48S, FNB48P, C1)
+- Configurable Bluetooth adapter selection for multi-adapter systems
+- Data layer modules (`data/alerts.py`, `data/buffers.py`, `data/statistics.py`)
+- Storage layer modules (`storage/session_manager.py`, `storage/settings.py`)
+- Cross-platform install scripts (`install.py`, `install_linux.sh`, `install_macos.sh`, `install_windows.bat`)
+- Cross-platform run scripts (`run.py`, `run.sh`, `run.bat`, `run.ps1`)
+- Test suite with pytest (`tests/test_api.py`, `tests/test_data_decoding.py`, `tests/test_statistics.py`)
+- Project configuration (`pyproject.toml`, `Makefile`)
+- Contributing guidelines (`CONTRIBUTING.md`)
+
+### Fixed
+- **Bluetooth CRC algorithm**: Changed from simple byte sum to CRC16-XMODEM (matching Android app)
+- **Bluetooth notification sequence**: Enable notifications before sending commands (matching Android app)
+- **Flask-SocketIO compatibility**: Changed from `eventlet` to `threading` async mode for asyncio compatibility
+
+### Changed
+- Documentation reorganized into `docs/` folder
+- Updated `CLAUDE.md` with detailed Bluetooth protocol documentation
+
+### Technical
+- Bluetooth packet format: `[0xAA][CMD][LEN][DATA...][CRC_LOW]`
+- CRC16-XMODEM polynomial: 0x1021
+- BLE UUIDs: Write `0000ffe9-...`, Notify `0000ffe4-...`
+- Initialization sequence: GET_INFO (0x81) → GET_STATUS (0x85) → START (0x82)
+- Sample rate: ~10Hz over Bluetooth
+
 ## [1.0.0] - 2025-01-09
 
 ### Added

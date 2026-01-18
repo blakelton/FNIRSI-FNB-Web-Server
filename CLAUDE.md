@@ -1,8 +1,10 @@
-# FNIRSI FNB58 Web Monitor - Claude Code Guide
+# FNIRSI USB Power Monitor - Claude Code Guide
 
 ## Project Overview
 
-A real-time web application for monitoring FNIRSI FNB58 USB Power Meter via USB and Bluetooth. Built with Flask, WebSocket, and modern JavaScript.
+A real-time web application for monitoring FNIRSI USB Power Meters via USB and Bluetooth. Supports FNB58, FNB48, FNB48S, FNB48P, and C1 devices. Built with Flask, WebSocket, and modern JavaScript.
+
+**Supported Devices**: FNB58, FNB48, FNB48S, FNB48P, C1
 
 **Key Technologies**: Flask 3.0, Flask-SocketIO, PyUSB, Bleak, Chart.js, TailwindCSS
 
@@ -97,25 +99,65 @@ fnirsi-web-monitor/
 
 ### 2. Bluetooth Reader (`device/bluetooth_reader.py`)
 
-**Purpose**: Communicate with FNIRSI FNB58 via Bluetooth LE
+**Purpose**: Communicate with FNIRSI devices via Bluetooth LE
+
+**Supported Devices**: FNB58, FNB48, FNB48S, FNB48P, C1
 
 **Key Methods**:
-- `scan_devices(timeout)` - Scan for FNB58 devices
-- `connect()` - Connect to device (async wrapped)
-- `start_reading(callback)` - Enable notifications
+- `scan_devices(timeout)` - Scan for FNIRSI devices
+- `connect()` - Connect to device (async wrapped in sync API)
+- `start_reading(callback)` - Enable notifications and start data streaming
 
-**UUIDs**:
+**BLE UUIDs** (same for all devices):
 - Write: `0000ffe9-0000-1000-8000-00805f9b34fb`
 - Notify: `0000ffe4-0000-1000-8000-00805f9b34fb`
 
-**Data Format**:
-- Offset 21, 3x signed 32-bit integers (V, I, W)
-- Scale by 10000
+**Command Protocol** (FNB48 family):
+```python
+# Packet format: [0xAA][CMD][LEN][DATA...][CRC_LOW]
+# CRC: CRC16-XMODEM, only low byte appended
+
+# Commands:
+CMD_GET_INFO = 0x81      # Get device information
+CMD_START = 0x82         # Start data transmission
+CMD_STOP = 0x84          # Stop data transmission
+CMD_GET_STATUS = 0x85    # Get charging status
+
+# Example: GET_INFO command
+# Packet: [0xAA, 0x81, 0x00, 0xF4]  # 0xF4 is CRC16-XMODEM low byte
+```
+
+**CRC16-XMODEM Algorithm**:
+```python
+def crc16_xmodem(data):
+    crc = 0
+    for byte in data:
+        for bit in range(8):
+            xor_flag = ((byte >> (7 - bit)) & 1) == 1
+            msb_set = ((crc >> 15) & 1) == 1
+            crc = (crc << 1) & 0xFFFF
+            if xor_flag ^ msb_set:
+                crc ^= 0x1021  # XMODEM polynomial
+    return crc & 0xFFFF
+```
+
+**Data Format** (FNB48):
+- Packets start with `0xAA`, followed by command response
+- Voltage/Current/Power data at various offsets depending on response type
+- Temperature data available in some responses
+
+**Initialization Sequence** (must match Android app):
+1. Enable BLE notifications FIRST
+2. Send GET_INFO (0x81)
+3. Send GET_STATUS (0x85)
+4. Send START (0x82)
 
 **Important Notes**:
 - Requires `bleak` library
 - Uses asyncio event loop in separate thread
-- Limited data compared to USB (no D+/D-/Temp)
+- Flask-SocketIO must use `async_mode='threading'` (not eventlet) for compatibility
+- Device auto-detection based on name patterns (FNB58, FNB48, etc.)
+- Default adapter is `hci1` (configurable for multi-adapter systems)
 
 ### 3. Device Manager (`device/device_manager.py`)
 
@@ -162,9 +204,10 @@ historical_data      # Server → Client: Historical data response
 ```
 
 **Important Notes**:
-- Uses Flask-SocketIO with threading mode
+- Uses Flask-SocketIO with `async_mode='threading'` (required for Bluetooth asyncio compatibility)
 - CORS enabled for development
 - Sessions saved as JSON in `sessions/` directory
+- Do NOT use `async_mode='eventlet'` - it conflicts with BluetoothReader's asyncio
 
 ### 5. Dashboard JavaScript (`static/js/dashboard.js`)
 
@@ -374,11 +417,15 @@ socketio.run(app, debug=True)
 - Check system Bluetooth status
 - Verify device is in range
 - Use `bleak` scanner CLI: `python -m bleak.scanner`
+- On multi-adapter systems, specify adapter: `BluetoothReader(adapter='hci1')`
+- If device connects but no data: verify CRC algorithm is CRC16-XMODEM (not simple sum)
+- Disconnect stale connections: `bluetoothctl disconnect <address>`
 
 **WebSocket Issues**:
 - Check browser console for connection errors
 - Verify CORS settings if accessing from different origin
-- Check Flask-SocketIO async mode (threading/eventlet/gevent)
+- Flask-SocketIO MUST use `async_mode='threading'` for Bluetooth compatibility
+- Do NOT use eventlet - it conflicts with asyncio used by BluetoothReader
 
 ## Performance Optimization
 
@@ -527,6 +574,15 @@ curl http://localhost:5000/api/stats
 
 ---
 
-**Last Updated**: 2025-01-08  
-**Project Version**: 1.0.0  
+**Last Updated**: 2026-01-17
+**Project Version**: 1.1.0
 **Claude Code**: Use this as context for all development tasks
+
+## Changelog
+
+### v1.1.0 (2026-01-17)
+- Added support for FNB48, FNB48S, FNB48P, C1 devices via Bluetooth
+- Fixed Bluetooth CRC algorithm: changed from simple byte sum to CRC16-XMODEM
+- Fixed notification sequence to match Android app (enable notifications before sending commands)
+- Changed Flask-SocketIO from eventlet to threading mode for asyncio compatibility
+- Added multi-adapter support for Bluetooth (configurable adapter selection)
