@@ -365,7 +365,9 @@ Communication uses USB HID with 64-byte packets:
 
 ## Credits
 
+- Web UI interface: [f4inu/FNB58](https://github.com/f4inu/FNB58) (MIT License)
 - USB protocol reverse engineering: [baryluk/fnirsi-usb-power-data-logger](https://github.com/baryluk/fnirsi-usb-power-data-logger)
+- Bluetooth protocol: Reverse-engineered from FNIRSI Android app
 - Original Windows software: [FNIRSI](https://www.fnirsi.com/)
 
 ## License
