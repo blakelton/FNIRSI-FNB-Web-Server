@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="128" cy="128" r="120" fill="#1e293b"/>
+
+  <!-- USB connector body -->
+  <rect x="88" y="40" width="80" height="100" rx="8" fill="#3b82f6"/>
+  <rect x="96" y="48" width="64" height="84" rx="4" fill="#1e293b"/>
+
+  <!-- USB pins -->
+  <rect x="108" y="56" width="8" height="20" rx="2" fill="#fbbf24"/>
+  <rect x="124" y="56" width="8" height="20" rx="2" fill="#fbbf24"/>
+  <rect x="140" y="56" width="8" height="20" rx="2" fill="#fbbf24"/>
+
+  <!-- Display screen showing voltage/current -->
+  <rect x="100" y="82" width="56" height="44" rx="4" fill="#0f172a"/>
+
+  <!-- Voltage reading -->
+  <text x="128" y="102" font-family="monospace" font-size="14" font-weight="bold" fill="#22c55e" text-anchor="middle">5.12V</text>
+
+  <!-- Current reading -->
+  <text x="128" y="120" font-family="monospace" font-size="14" font-weight="bold" fill="#f97316" text-anchor="middle">2.1A</text>
+
+  <!-- Power cable -->
+  <rect x="118" y="140" width="20" height="30" rx="4" fill="#64748b"/>
+  <rect x="114" y="170" width="28" height="50" rx="6" fill="#475569"/>
+
+  <!-- Lightning bolt (power symbol) -->
+  <path d="M128 180 L138 200 L130 200 L134 220 L124 196 L132 196 Z" fill="#fbbf24"/>
+
+  <!-- Graph lines at bottom (representing monitoring) -->
+  <path d="M50 230 Q70 210, 90 225 T130 215 T170 230 T206 220" stroke="#3b82f6" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <circle cx="50" cy="230" r="4" fill="#22c55e"/>
+  <circle cx="90" cy="225" r="4" fill="#22c55e"/>
+  <circle cx="130" cy="215" r="4" fill="#22c55e"/>
+  <circle cx="170" cy="230" r="4" fill="#22c55e"/>
+  <circle cx="206" cy="220" r="4" fill="#22c55e"/>
+</svg>

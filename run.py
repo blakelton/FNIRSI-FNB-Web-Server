@@ -104,7 +104,8 @@ def run_installer(script_dir):
 
 def run_monitor(script_dir, python_cmd=None):
     """Run the monitor application."""
-    monitor_script = os.path.join(script_dir, "fnb48p_monitor.py")
+    # Use app.py for full USB + Bluetooth support
+    monitor_script = os.path.join(script_dir, "app.py")
 
     if not os.path.exists(monitor_script):
         print(f"[!] Error: {monitor_script} not found")
@@ -113,7 +114,7 @@ def run_monitor(script_dir, python_cmd=None):
     if python_cmd is None:
         python_cmd = sys.executable
 
-    print("[*] Starting FNIRSI FNB48P Monitor...")
+    print("[*] Starting FNIRSI USB Power Monitor...")
     print("[*] Open http://localhost:5002 in your browser")
     print("[*] Press Ctrl+C to stop")
     print()

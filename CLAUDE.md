@@ -347,14 +347,19 @@ def api_analyze_session(filename):
 SECRET_KEY=your-secret-key-here
 FLASK_ENV=development
 HOST=0.0.0.0
-PORT=5000
+PORT=5002
 BT_DEVICE_ADDRESS=98:DA:B0:08:A1:82  # Optional
 ```
 
 ### Config Class (`config.py`)
 ```python
-DEVICE_VENDOR_ID = 0x0716  # FNIRSI vendor ID
-DEVICE_PRODUCT_IDS = [0x5030, 0x5031]  # Supported products
+# Supported devices with vendor/product IDs
+SUPPORTED_DEVICES = [
+    (0x2e3c, 0x0049, 'FNB48P/S'),   # FNB48P, FNB48S
+    (0x2e3c, 0x5558, 'FNB58'),       # FNB58
+    (0x0483, 0x003a, 'FNB48'),       # FNB48
+    (0x0483, 0x003b, 'C1'),          # C1
+]
 SAMPLE_RATE_HZ = 100  # USB sampling rate
 BT_SAMPLE_RATE_HZ = 10  # Bluetooth sampling rate
 ```
@@ -553,23 +558,23 @@ python test_setup.py
 ### Connect to Device
 ```bash
 # Auto-detect
-curl -X POST http://localhost:5000/api/connect -H "Content-Type: application/json" -d '{"mode":"auto"}'
+curl -X POST http://localhost:5002/api/connect -H "Content-Type: application/json" -d '{"mode":"auto"}'
 
 # USB only
-curl -X POST http://localhost:5000/api/connect -H "Content-Type: application/json" -d '{"mode":"usb"}'
+curl -X POST http://localhost:5002/api/connect -H "Content-Type: application/json" -d '{"mode":"usb"}'
 
 # Bluetooth only
-curl -X POST http://localhost:5000/api/connect -H "Content-Type: application/json" -d '{"mode":"bluetooth"}'
+curl -X POST http://localhost:5002/api/connect -H "Content-Type: application/json" -d '{"mode":"bluetooth"}'
 ```
 
 ### Get Latest Reading
 ```bash
-curl http://localhost:5000/api/reading/latest
+curl http://localhost:5002/api/reading/latest
 ```
 
 ### Get Stats
 ```bash
-curl http://localhost:5000/api/stats
+curl http://localhost:5002/api/stats
 ```
 
 ---

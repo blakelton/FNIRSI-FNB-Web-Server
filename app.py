@@ -532,11 +532,11 @@ def internal_error(error):
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("FNIRSI FNB58 Web Monitor")
+    print("FNIRSI USB Power Monitor")
     print("=" * 60)
     print("Starting server...")
-    print("Dashboard will be available at: http://localhost:5000")
+    print("Dashboard will be available at: http://localhost:5002")
     print("=" * 60)
-    
-    # Run with SocketIO
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
+    # Run with SocketIO (allow_unsafe_werkzeug needed for Flask-SocketIO 5.3+)
+    socketio.run(app, host='0.0.0.0', port=5002, debug=True, allow_unsafe_werkzeug=True)

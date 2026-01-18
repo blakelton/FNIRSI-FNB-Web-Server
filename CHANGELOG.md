@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bluetooth support for FNB48, FNB48S, FNB48P, C1 devices
 - Multi-device auto-detection (FNB58, FNB48, FNB48S, FNB48P, C1)
 - Configurable Bluetooth adapter selection for multi-adapter systems
+- Setup wizard (`setup.py`) with venv creation, dependency install, and desktop launchers
 - Data layer modules (`data/alerts.py`, `data/buffers.py`, `data/statistics.py`)
 - Storage layer modules (`storage/session_manager.py`, `storage/settings.py`)
 - Cross-platform install scripts (`install.py`, `install_linux.sh`, `install_macos.sh`, `install_windows.bat`)
@@ -23,10 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bluetooth CRC algorithm**: Changed from simple byte sum to CRC16-XMODEM (matching Android app)
 - **Bluetooth notification sequence**: Enable notifications before sending commands (matching Android app)
 - **Flask-SocketIO compatibility**: Changed from `eventlet` to `threading` async mode for asyncio compatibility
+- **Port standardization**: All entry points now use port 5002 consistently
+- **Device IDs**: Fixed vendor/product IDs in config.py to match actual FNIRSI devices
 
 ### Changed
+- Default entry point changed from `fnb48p_monitor.py` to `app.py` for full USB+Bluetooth support
 - Documentation reorganized into `docs/` folder
 - Updated `CLAUDE.md` with detailed Bluetooth protocol documentation
+- Removed eventlet dependency (conflicts with Bluetooth asyncio)
 
 ### Technical
 - Bluetooth packet format: `[0xAA][CMD][LEN][DATA...][CRC_LOW]`

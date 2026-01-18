@@ -58,29 +58,44 @@ The monitor automatically detects your device and updates the UI with the model 
 
 ## Application Modes
 
-This project provides two entry points depending on your needs:
+This project provides two entry points depending on your connection type:
 
-| Entry Point | Dependencies | Features |
-|-------------|--------------|----------|
-| `fnb48p_monitor.py` | Flask, PyUSB | Standalone monitor with all core features. **Recommended for most users.** |
-| `app.py` | Full requirements.txt | Professional mode with Bluetooth, advanced analysis, WebSocket support |
+| Entry Point | Connection | Dependencies | Features |
+|-------------|------------|--------------|----------|
+| `fnb48p_monitor.py` | **USB only** | Flask, PyUSB | Lightweight standalone monitor. Fast startup, minimal deps. |
+| `app.py` | **USB + Bluetooth** | Full requirements.txt | Full-featured with Bluetooth, WebSocket, advanced analysis |
 
-**For most users:** Use `fnb48p_monitor.py` (installed by default)
+### Which should I use?
 
-**For advanced features:** Install full dependencies with `pip install -r requirements.txt`, then run `app.py`
+- **USB connection?** → Use `fnb48p_monitor.py` (lighter, faster)
+- **Bluetooth connection?** → Use `app.py` (required for BT support)
+- **Not sure?** → Use `app.py` for maximum compatibility
 
 ## Quick Start
 
-### Universal Python Scripts (Recommended)
+### Setup Wizard (Recommended)
 
-The easiest way to get started - works on any platform with Python installed:
+The easiest way to get started - complete setup with desktop launcher:
 
 ```bash
-# Install dependencies (auto-detects your OS)
-python install.py
+# Run the setup wizard
+python setup.py
+```
 
-# Run the monitor (auto-detects your OS)
-python run.py
+This will:
+- Create a virtual environment
+- Install all dependencies
+- Set up USB permissions (Linux)
+- Create a desktop launcher
+
+### Manual Start
+
+```bash
+# For USB + Bluetooth (full features)
+python app.py
+
+# For USB only (lightweight)
+python fnb48p_monitor.py
 ```
 
 ### Platform-Specific Scripts

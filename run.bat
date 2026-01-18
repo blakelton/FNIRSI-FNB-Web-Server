@@ -1,8 +1,9 @@
 @echo off
-REM FNIRSI FNB48P Web Monitor - Windows Run Script
+REM FNIRSI USB Power Monitor - Windows Run Script
+REM Supports USB and Bluetooth connections
 
 echo ========================================
-echo   FNIRSI FNB48P Web Monitor
+echo   FNIRSI USB Power Monitor
 echo ========================================
 echo.
 
@@ -53,8 +54,8 @@ if errorlevel 1 (
 )
 
 echo.
-echo [*] Starting FNIRSI FNB48P Monitor...
-echo [*] Open http://localhost:5002 in your browser
+echo [*] Starting FNIRSI USB Monitor...
+echo [*] Web interface: http://localhost:5002
 echo [*] Press Ctrl+C to stop
 echo.
 echo ----------------------------------------
@@ -67,6 +68,13 @@ echo   4. Install libusb-win32 or WinUSB driver
 echo ----------------------------------------
 echo.
 
-python fnb48p_monitor.py
+REM Open browser after delay
+if not "%1"=="--no-browser" (
+    start "" cmd /c "timeout /t 2 /nobreak >nul && start http://localhost:5002"
+)
+
+REM Use app.py for full USB + Bluetooth support
+REM Use fnb48p_monitor.py for USB-only lightweight mode
+python app.py
 
 pause

@@ -6,16 +6,22 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
     
     # Flask-SocketIO Configuration
-    SOCKETIO_ASYNC_MODE = 'threading'  # or 'eventlet' or 'gevent'
-    
-    # Device Configuration
-    DEVICE_VENDOR_ID = 0x0716  # FNIRSI vendor ID
-    DEVICE_PRODUCT_IDS = [0x5030, 0x5031]  # FNB48, C1, FNB58
-    
+    # MUST use 'threading' for Bluetooth asyncio compatibility (NOT eventlet)
+    SOCKETIO_ASYNC_MODE = 'threading'
+
+    # Device Configuration - FNIRSI USB Testers
+    # Supported devices with their vendor/product IDs:
+    SUPPORTED_DEVICES = [
+        (0x2e3c, 0x0049, 'FNB48P/S'),   # FNB48P, FNB48S - Premium testers
+        (0x2e3c, 0x5558, 'FNB58'),       # FNB58 - Advanced tester with Bluetooth
+        (0x0483, 0x003a, 'FNB48'),       # FNB48 - Original tester
+        (0x0483, 0x003b, 'C1'),          # C1 - Compact Type-C trigger
+    ]
+
     # Bluetooth Configuration
     BT_WRITE_UUID = "0000ffe9-0000-1000-8000-00805f9b34fb"
     BT_NOTIFY_UUID = "0000ffe4-0000-1000-8000-00805f9b34fb"
-    BT_DEVICE_NAME = "FNB58"  # Partial name to search for
+    BT_DEVICE_PATTERNS = ["FNB58", "FNB48", "C1", "FNIRSI"]  # Device name patterns
     
     # Data Collection
     SAMPLE_RATE_HZ = 100  # Hz (USB mode)

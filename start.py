@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """
-FNIRSI FNB58 Web Monitor - Startup Script
+FNIRSI USB Power Monitor - Startup Script
 Quick launcher with system checks
+
+Note: This script uses threading mode for Flask-SocketIO to support
+both USB and Bluetooth connections. Do NOT use eventlet.
 """
 
-# IMPORTANT: eventlet monkey_patch MUST be first
-import eventlet
-eventlet.monkey_patch()
-
 import sys
-import subprocess
 import os
 
 def check_python_version():
@@ -23,63 +21,72 @@ def check_python_version():
 
 def check_dependencies():
     """Check if required packages are installed"""
-    required = ['flask', 'flask_socketio', 'usb', 'bleak']
+    required = [
+        ('flask', 'flask'),
+        ('flask_socketio', 'flask-socketio'),
+        ('usb', 'pyusb'),
+        ('bleak', 'bleak'),
+    ]
     missing = []
-    
-    for package in required:
+
+    for import_name, package_name in required:
         try:
-            __import__(package)
-            print(f"✓ {package}")
+            __import__(import_name)
+            print(f"✓ {package_name}")
         except ImportError:
-            missing.append(package)
-            print(f"❌ {package} not found")
-    
+            missing.append(package_name)
+            print(f"❌ {package_name} not found")
+
     if missing:
         print("\n❌ Missing dependencies. Install with:")
         print("   pip install -r requirements.txt")
         return False
-    
+
     return True
 
 def check_device():
     """Check if device is connected"""
     print("\n🔍 Checking for FNIRSI device...")
+
+    # Check USB
     try:
         import usb.core
-        device = usb.core.find(idVendor=0x0716)
-        if device:
-            print("✓ FNIRSI device detected (USB)")
-            return True
-        else:
-            print("⚠️  No USB device detected")
-            print("   Device may be connected via Bluetooth")
-            return True
+        # Check all known FNIRSI vendor IDs
+        vendors = [0x2e3c, 0x0483]
+        for vid in vendors:
+            device = usb.core.find(idVendor=vid)
+            if device:
+                print("✓ FNIRSI device detected (USB)")
+                return True
+        print("⚠️  No USB device detected")
+        print("   Device may be connected via Bluetooth")
+        return True
     except Exception as e:
         print(f"⚠️  Could not check USB: {e}")
         return True
 
 def main():
     print("=" * 60)
-    print("FNIRSI FNB58 Web Monitor - Startup")
+    print("FNIRSI USB Power Monitor - Startup")
     print("=" * 60)
     print()
-    
+
     # System checks
     print("System Checks:")
     print("-" * 60)
-    
+
     if not check_python_version():
         sys.exit(1)
-    
+
     if not check_dependencies():
         sys.exit(1)
-    
+
     check_device()
-    
+
     print()
     print("=" * 60)
     print("Starting Flask server...")
-    print("Dashboard: http://localhost:5001")
+    print("Dashboard: http://localhost:5002")
     print("Press Ctrl+C to stop")
     print("=" * 60)
     print()
@@ -87,7 +94,7 @@ def main():
     # Start Flask app
     try:
         from app import app, socketio
-        socketio.run(app, host='0.0.0.0', port=5001, debug=True)
+        socketio.run(app, host='0.0.0.0', port=5002, debug=True, allow_unsafe_werkzeug=True)
     except KeyboardInterrupt:
         print("\n\n👋 Shutting down gracefully...")
     except Exception as e:

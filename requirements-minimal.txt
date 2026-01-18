@@ -1,6 +1,7 @@
 # FNIRSI Web Monitor - Minimal Requirements
-# For standalone fnb48p_monitor.py only
-# Use requirements.txt for full app.py features
+# For standalone fnb48p_monitor.py (USB only)
+# Use requirements.txt for full app.py features (USB + Bluetooth)
 
 Flask>=3.0.0
 pyusb>=1.2.1
+libusb1>=3.1.0

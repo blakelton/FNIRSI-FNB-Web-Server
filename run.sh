@@ -1,5 +1,6 @@
 #!/bin/bash
-# FNIRSI FNB48P Web Monitor - Cross-Platform Run Script (Linux/macOS)
+# FNIRSI USB Power Monitor - Cross-Platform Run Script (Linux/macOS)
+# Supports USB and Bluetooth connections
 
 set -e
 
@@ -7,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 echo "========================================"
-echo "  FNIRSI FNB48P Web Monitor"
+echo "  FNIRSI USB Power Monitor"
 echo "========================================"
 echo
 
@@ -141,9 +142,23 @@ fi
 
 # Run the monitor
 echo
-echo "[*] Starting FNIRSI FNB48P Monitor..."
-echo "[*] Open http://localhost:5002 in your browser"
+echo "[*] Starting FNIRSI USB Monitor..."
+echo "[*] Web interface: http://localhost:5002"
 echo "[*] Press Ctrl+C to stop"
 echo
 
-$PYTHON_CMD fnb48p_monitor.py
+# Open browser after short delay (in background)
+if [ "$1" != "--no-browser" ]; then
+    (
+        sleep 2
+        if [ "$OS" == "linux" ]; then
+            xdg-open "http://localhost:5002" 2>/dev/null || true
+        elif [ "$OS" == "macos" ]; then
+            open "http://localhost:5002" 2>/dev/null || true
+        fi
+    ) &
+fi
+
+# Use app.py for full USB + Bluetooth support
+# Use fnb48p_monitor.py for USB-only lightweight mode
+$PYTHON_CMD app.py

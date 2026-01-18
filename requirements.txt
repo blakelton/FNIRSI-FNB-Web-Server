@@ -1,11 +1,11 @@
 # Core Flask
-Flask==3.0.0
-Flask-SocketIO==5.3.6
-Flask-CORS==4.0.0
+Flask>=3.0.0
+Flask-SocketIO>=5.3.6
+Flask-CORS>=4.0.0
 
 # USB Communication
-pyusb==1.2.1
-libusb1==3.1.0
+pyusb>=1.2.1
+libusb1>=3.1.0
 
 # Bluetooth Communication
 bleak>=0.20.0
@@ -15,8 +15,11 @@ numpy>=1.26.0
 pandas>=2.2.0
 
 # Utilities
-python-dotenv==1.0.0
-python-dateutil==2.8.2
+python-dotenv>=1.0.0
+python-dateutil>=2.8.2
 
-# WebSocket async support (required)
-eventlet==0.40.3
+# System monitoring (optional, graceful fallback if missing)
+psutil>=5.9.0
+
+# Note: Do NOT install eventlet - it conflicts with Bluetooth asyncio
+# Flask-SocketIO uses threading mode for compatibility
