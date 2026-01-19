@@ -461,12 +461,14 @@ def api_system_stats():
 
         cpu_percent = psutil.cpu_percent(interval=0.1)
         memory = psutil.virtual_memory()
-        memory_mb = memory.used / (1024 * 1024)
+        memory_used_gb = memory.used / (1024 * 1024 * 1024)
+        memory_total_gb = memory.total / (1024 * 1024 * 1024)
 
         return jsonify({
             'success': True,
             'cpu_percent': round(cpu_percent, 1),
-            'memory_mb': round(memory_mb, 0),
+            'memory_used_gb': round(memory_used_gb, 2),
+            'memory_total_gb': round(memory_total_gb, 2),
             'memory_percent': memory.percent
         })
     except ImportError:
@@ -475,7 +477,8 @@ def api_system_stats():
         return jsonify({
             'success': True,
             'cpu_percent': round(random.uniform(10, 30), 1),
-            'memory_mb': round(random.uniform(100, 300), 0),
+            'memory_used_gb': round(random.uniform(4, 8), 2),
+            'memory_total_gb': 16.00,
             'memory_percent': round(random.uniform(40, 60), 1)
         })
     except Exception as e:

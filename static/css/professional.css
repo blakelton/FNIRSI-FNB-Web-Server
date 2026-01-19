@@ -259,21 +259,21 @@ body {
 }
 
 .header-label {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     color: var(--text-tertiary);
     letter-spacing: 0.5px;
     font-weight: 600;
 }
 
 .header-value {
-    font-size: 1rem;
+    font-size: 1.5rem;
     font-weight: 700;
     font-family: var(--font-display);
     color: #ffffff;
 }
 
 .header-unit {
-    font-size: 0.7rem;
+    font-size: 0.85rem;
     color: var(--text-secondary);
 }
 
@@ -1686,15 +1686,15 @@ body {
     }
 
     .header-value {
-        font-size: 0.85rem;
+        font-size: 1.1rem;
     }
 
     .header-label {
-        font-size: 0.55rem;
+        font-size: 0.65rem;
     }
 
     .header-unit {
-        font-size: 0.6rem;
+        font-size: 0.75rem;
     }
 
     /* Control bar compact on mobile */

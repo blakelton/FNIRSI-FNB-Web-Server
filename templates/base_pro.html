@@ -61,7 +61,7 @@
                 </div>
                 <div class="status-item">
                     <span class="status-label">MEM</span>
-                    <span class="status-value" id="mem-usage">0MB</span>
+                    <span class="status-value" id="mem-usage">0.00/0.00GB</span>
                 </div>
                 <div class="status-item">
                     <span class="status-label">TIME</span>
@@ -108,14 +108,14 @@
                     const memEl = document.getElementById('mem-usage');
 
                     if (cpuEl) cpuEl.textContent = data.cpu_percent + '%';
-                    if (memEl) memEl.textContent = data.memory_mb + 'MB';
+                    if (memEl) memEl.textContent = data.memory_used_gb.toFixed(2) + '/' + data.memory_total_gb.toFixed(2) + 'GB';
                 }
             } catch (error) {
                 // Fallback to mock data if API fails
                 const cpuEl = document.getElementById('cpu-usage');
                 const memEl = document.getElementById('mem-usage');
                 if (cpuEl) cpuEl.textContent = '15.2%';
-                if (memEl) memEl.textContent = '153MB';
+                if (memEl) memEl.textContent = '4.50/16.00GB';
             }
         }
         setInterval(updateSystemStats, 2000);
