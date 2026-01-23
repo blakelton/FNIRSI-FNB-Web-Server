@@ -81,13 +81,13 @@ class BluetoothReader:
     # Supported device name patterns
     SUPPORTED_DEVICES = ["FNB58", "FNB48", "FNB48s", "FNB48S", "FNB48P", "C1", "FNIRSI"]
 
-    # Default BLE adapter (hci1 works on systems with multiple adapters)
-    DEFAULT_ADAPTER = "hci1"
+    # Default BLE adapter (None = auto-detect, or specify "hci0", "hci1", etc.)
+    DEFAULT_ADAPTER = None
 
     def __init__(self, device_address=None, device_name=None, adapter=None):
         self.device_address = device_address
         self.device_name = device_name
-        self.adapter = adapter or self.DEFAULT_ADAPTER
+        self.adapter = adapter if adapter is not None else self.DEFAULT_ADAPTER
         self.client = None
         self.is_connected = False
         self.is_reading = False
