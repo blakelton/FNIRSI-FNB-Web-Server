@@ -164,8 +164,8 @@ class DataProcessor:
 
         # Calculate energy and capacity using trapezoidal integration
         dt = 1.0 / 100.0 / 3600.0  # 100Hz to hours
-        total_energy_wh = np.trapz(powers, dx=1/100) / 3600
-        total_capacity_ah = np.trapz(currents, dx=1/100) / 3600
+        total_energy_wh = np.trapezoid(powers, dx=1/100) / 3600
+        total_capacity_ah = np.trapezoid(currents, dx=1/100) / 3600
 
         stats['energy_wh'] = float(total_energy_wh)
         stats['capacity_ah'] = float(total_capacity_ah)

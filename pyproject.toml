@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fnirsi-web-monitor"
-version = "1.0.0"
+version = "1.2.0"
 description = "Web-based monitoring application for FNIRSI USB power meters"
 readme = "README.md"
 license = {text = "MIT"}
@@ -52,6 +52,8 @@ full = [
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
+    "pytest-mock>=3.12.0",
+    "pytest-asyncio>=0.23.0",
     "black>=23.0.0",
     "flake8>=6.0.0",
 ]
@@ -80,4 +82,4 @@ target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short -p no:azurepipelines"

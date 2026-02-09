@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-02-09
+
+### Added
+- Comprehensive unit test suite (270 tests, 77% coverage)
+  - `test_config.py` - Configuration validation (15 tests)
+  - `test_protocol_detector.py` - Protocol detection logic (20 tests)
+  - `test_alert_manager.py` - Alert thresholds, cooldowns, callbacks (33 tests)
+  - `test_usb_reader.py` - USB packet decoding, connections, triggers (32 tests)
+  - `test_bluetooth_reader.py` - BLE parsing, CRC, device detection (35 tests)
+  - `test_data_processor.py` - Statistics, export, reports (30 tests)
+  - `test_device_manager.py` - Device orchestration, recording, callbacks (44 tests)
+  - `test_api.py` - REST API endpoints (35 tests)
+  - `test_websocket.py` - WebSocket events (4 tests)
+- GitHub Actions CI workflow (`.github/workflows/tests.yml`)
+  - Runs on push to `main`/`develop` and pull requests
+  - Tests against Python 3.10, 3.11, 3.12
+  - Coverage report generation
+- GitHub Actions release workflow (`.github/workflows/release.yml`)
+  - Automated GitHub Releases from version tags
+  - Changelog extraction and test validation
+- pytest-mock and pytest-asyncio as dev dependencies
+
+### Fixed
+- **numpy compatibility**: `np.trapz` renamed to `np.trapezoid` for numpy 2.x support
+- **Test fixtures**: Corrected USB packet fixture byte layout (`data[1]=0x04`, not `data[0]`)
+
+### Changed
+- Replaced placeholder test suite (0% real coverage) with comprehensive tests
+- Disabled `pytest-azurepipelines` plugin in pytest config
+
 ## [1.1.0] - 2026-01-17
 
 ### Added
