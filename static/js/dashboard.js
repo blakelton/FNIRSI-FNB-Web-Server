@@ -211,6 +211,8 @@ function connectWebSocket() {
     
     socket.on('connect', () => {
         console.log('WebSocket connected');
+        // Request recent data once socket is actually connected
+        socket.emit('request_data', { points: 100 });
     });
     
     socket.on('disconnect', () => {
@@ -626,11 +628,6 @@ document.addEventListener('DOMContentLoaded', () => {
     checkConnectionStatus().then(status => {
         if (status.connected) {
             connectWebSocket();
-
-            // Request recent data
-            if (socket) {
-                socket.emit('request_data', { points: 100 });
-            }
         }
     });
 

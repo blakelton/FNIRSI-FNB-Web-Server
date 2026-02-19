@@ -27,6 +27,7 @@ socketio = SocketIO(
     app,
     cors_allowed_origins="*",
     async_mode='threading',  # Use threading mode for Bluetooth compatibility
+    manage_session=False,  # Fix: Flask 3.1+ made RequestContext.session read-only
     ping_timeout=60,  # Increase timeout before disconnecting inactive client
     ping_interval=25,  # Send ping every 25 seconds to keep connection alive
     logger=False,

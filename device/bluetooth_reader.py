@@ -97,6 +97,8 @@ class BluetoothReader:
         self.thread = None
         self.device_type = None  # 'fnb58' or 'fnb48'
         self.sample_count = 0
+        self._last_data_time = None  # Watchdog: track last notification time
+        self._watchdog_timeout = 10  # Seconds without data before resending init
 
         # Latest parsed values (for combining multiple packet types)
         self._voltage = 0.0
@@ -286,9 +288,20 @@ class BluetoothReader:
             if self.is_reading and self.data_callback:
                 await self._start_notifications()
                 # After notifications started, keep the event loop alive
-                # until we're told to stop reading
+                # with a watchdog that resends init commands if data stops
                 while self.is_reading and self.client and self.client.is_connected:
-                    await asyncio.sleep(0.1)
+                    await asyncio.sleep(1.0)
+                    # Watchdog: if no data received within timeout, resend init
+                    if self._last_data_time:
+                        elapsed = (datetime.now() - self._last_data_time).total_seconds()
+                        if elapsed > self._watchdog_timeout:
+                            print(f"Watchdog: No data for {elapsed:.0f}s, resending init commands...")
+                            try:
+                                await self._send_init_commands()
+                                self._last_data_time = datetime.now()
+                            except Exception as e:
+                                print(f"Watchdog: Failed to resend init: {e}")
+                                break
                 break
             await asyncio.sleep(0.1)
 
@@ -301,6 +314,7 @@ class BluetoothReader:
 
         def notification_handler(sender, data):
             """Handle incoming notifications"""
+            self._last_data_time = datetime.now()
             reading = self._parse_data(data)
             if reading:
                 self.data_buffer.append(reading)
