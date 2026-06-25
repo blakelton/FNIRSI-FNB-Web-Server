@@ -35,7 +35,9 @@ if ! command -v brew &> /dev/null; then
 fi
 
 echo "[1/3] Installing system dependencies..."
-brew install python libusb || { echo "[!] Failed to install packages via Homebrew"; exit 1; }
+# hidapi is the USB transport on macOS (libusb cannot claim the meter's HID
+# interface there). libusb is kept only for the standalone pyusb scripts.
+brew install python hidapi libusb || { echo "[!] Failed to install packages via Homebrew"; exit 1; }
 
 echo
 echo "[2/3] Setting up Python environment..."
@@ -82,7 +84,8 @@ echo
 echo "For full features (professional mode, Bluetooth, etc.):"
 echo "  pip install -r requirements.txt"
 echo
-echo "Note: On macOS, USB access should work without additional"
-echo "      configuration. If you encounter permission issues,"
-echo "      try running with sudo."
+echo "Note: On macOS, USB works via hidapi -- no root and no Privacy &"
+echo "      Security permission are needed. Do NOT use sudo to fix USB"
+echo "      issues (it cannot claim the meter's HID interface on macOS)."
+echo "      If USB still fails, use Bluetooth mode (the FNB58 supports BLE)."
 echo

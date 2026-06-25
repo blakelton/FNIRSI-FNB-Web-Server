@@ -1,8 +1,29 @@
-"""Tests for device/usb_reader.py"""
+"""Tests for device/usb_reader.py (hidapi-based transport)."""
 
 import pytest
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 from device.usb_reader import USBReader
+
+
+def _enum_side_effect(target_vid, target_pid, entry):
+    """Build a hid.enumerate side_effect that only matches one (vid, pid)."""
+    def _enum(vid, pid):
+        if vid == target_vid and pid == target_pid:
+            return [entry]
+        return []
+    return _enum
+
+
+def _entry(vid, pid):
+    return {
+        'path': b'/dev/hidraw-test',
+        'vendor_id': vid,
+        'product_id': pid,
+        'interface_number': 0,
+        'manufacturer_string': 'FNIRSI',
+        'product_string': 'USB Tester',
+        'serial_number': '0001',
+    }
 
 
 class TestUSBReaderInit:
@@ -11,8 +32,6 @@ class TestUSBReaderInit:
         assert reader.device is None
         assert reader.is_connected is False
         assert reader.is_reading is False
-        assert reader.ep_in is None
-        assert reader.ep_out is None
         assert len(reader.data_buffer) == 0
 
     def test_custom_vendor_product(self):
@@ -27,161 +46,90 @@ class TestUSBReaderInit:
             assert isinstance(pid, int)
 
 
+@patch('device.usb_reader._HIDAPI_AVAILABLE', True)
 class TestUSBReaderConnect:
-    @patch('device.usb_reader.usb.util')
-    @patch('device.usb_reader.usb.core')
-    def test_connect_auto_detect(self, mock_core, mock_util):
-        mock_device = MagicMock()
-        mock_device.idVendor = 0x2e3c
-        mock_device.idProduct = 0x0049
-
-        # usb.core.find returns device on first supported device
-        mock_core.find.return_value = mock_device
-
-        # Mock configuration and endpoints
-        mock_ep_in = MagicMock()
-        mock_ep_out = MagicMock()
-        mock_intf = MagicMock()
-        mock_cfg = MagicMock()
-        mock_cfg.__getitem__ = MagicMock(return_value=mock_intf)
-        mock_device.get_active_configuration.return_value = mock_cfg
-        mock_device.__iter__ = MagicMock(return_value=iter([]))
-        mock_device.is_kernel_driver_active.return_value = False
-
-        mock_util.find_descriptor.side_effect = [mock_ep_out, mock_ep_in]
-        mock_util.endpoint_direction.return_value = 0
-        mock_util.ENDPOINT_OUT = 0x00
-        mock_util.ENDPOINT_IN = 0x80
+    @patch('device.usb_reader.hid')
+    def test_connect_auto_detect(self, mock_hid):
+        mock_hid.enumerate.side_effect = _enum_side_effect(
+            0x2e3c, 0x0049, _entry(0x2e3c, 0x0049))
+        mock_dev = MagicMock()
+        mock_dev.read.return_value = [0xAA, 0x04] + [0] * 62
+        mock_hid.device.return_value = mock_dev
 
         reader = USBReader()
         result = reader.connect()
 
         assert result is True
         assert reader.is_connected is True
+        mock_dev.open_path.assert_called_once()
 
-    @patch('device.usb_reader.usb.core')
-    def test_connect_device_not_found(self, mock_core):
-        mock_core.find.return_value = None
+    @patch('device.usb_reader.hid')
+    def test_connect_device_not_found(self, mock_hid):
+        mock_hid.enumerate.return_value = []
 
         reader = USBReader()
         with pytest.raises(ConnectionError, match="not found"):
             reader.connect()
 
-    @patch('device.usb_reader.usb.util')
-    @patch('device.usb_reader.usb.core')
-    def test_connect_endpoint_not_found(self, mock_core, mock_util):
-        mock_device = MagicMock()
-        mock_device.idVendor = 0x2e3c
-        mock_device.idProduct = 0x0049
-        mock_core.find.return_value = mock_device
-
-        mock_cfg = MagicMock()
-        mock_intf = MagicMock()
-        mock_cfg.__getitem__ = MagicMock(return_value=mock_intf)
-        mock_device.get_active_configuration.return_value = mock_cfg
-        mock_device.__iter__ = MagicMock(return_value=iter([]))
-        mock_device.is_kernel_driver_active.return_value = False
-
-        # Endpoints not found
-        mock_util.find_descriptor.return_value = None
-
-        reader = USBReader()
-        with pytest.raises(ConnectionError, match="endpoints"):
-            reader.connect()
-
-    @patch('device.usb_reader.usb.util')
-    @patch('device.usb_reader.usb.core')
-    def test_connect_detects_fnb58_type(self, mock_core, mock_util):
-        mock_device = MagicMock()
-        mock_device.idVendor = 0x2e3c  # FNB58/FNB48S vendor
-        mock_device.idProduct = 0x5558
-        mock_core.find.return_value = mock_device
-
-        mock_ep_in = MagicMock()
-        mock_ep_out = MagicMock()
-        mock_intf = MagicMock()
-        mock_cfg = MagicMock()
-        mock_cfg.__getitem__ = MagicMock(return_value=mock_intf)
-        mock_device.get_active_configuration.return_value = mock_cfg
-        mock_device.__iter__ = MagicMock(return_value=iter([]))
-        mock_device.is_kernel_driver_active.return_value = False
-        mock_util.find_descriptor.side_effect = [mock_ep_out, mock_ep_in]
+    @patch('device.usb_reader.hid')
+    def test_connect_detects_fnb58_type(self, mock_hid):
+        mock_hid.enumerate.side_effect = _enum_side_effect(
+            0x2e3c, 0x5558, _entry(0x2e3c, 0x5558))
+        mock_dev = MagicMock()
+        mock_dev.read.return_value = []
+        mock_hid.device.return_value = mock_dev
 
         reader = USBReader()
         reader.connect()
 
         assert reader.is_fnb58_or_fnb48s is True
 
-    @patch('device.usb_reader.usb.util')
-    @patch('device.usb_reader.usb.core')
-    def test_connect_detects_fnb48_type(self, mock_core, mock_util):
-        mock_device = MagicMock()
-        mock_device.idVendor = 0x0483  # FNB48/C1 vendor
-        mock_device.idProduct = 0x003a
-        mock_core.find.return_value = mock_device
-
-        mock_ep_in = MagicMock()
-        mock_ep_out = MagicMock()
-        mock_intf = MagicMock()
-        mock_cfg = MagicMock()
-        mock_cfg.__getitem__ = MagicMock(return_value=mock_intf)
-        mock_device.get_active_configuration.return_value = mock_cfg
-        mock_device.__iter__ = MagicMock(return_value=iter([]))
-        mock_device.is_kernel_driver_active.return_value = False
-        mock_util.find_descriptor.side_effect = [mock_ep_out, mock_ep_in]
+    @patch('device.usb_reader.hid')
+    def test_connect_detects_fnb48_type(self, mock_hid):
+        mock_hid.enumerate.side_effect = _enum_side_effect(
+            0x0483, 0x003a, _entry(0x0483, 0x003a))
+        mock_dev = MagicMock()
+        mock_dev.read.return_value = []
+        mock_hid.device.return_value = mock_dev
 
         reader = USBReader()
         reader.connect()
 
         assert reader.is_fnb58_or_fnb48s is False
 
-    @patch('device.usb_reader.usb.util')
-    @patch('device.usb_reader.usb.core')
-    def test_connect_sends_init_handshake(self, mock_core, mock_util):
-        mock_device = MagicMock()
-        mock_device.idVendor = 0x2e3c
-        mock_device.idProduct = 0x0049
-        mock_core.find.return_value = mock_device
-
-        mock_ep_in = MagicMock()
-        mock_ep_out = MagicMock()
-        mock_intf = MagicMock()
-        mock_cfg = MagicMock()
-        mock_cfg.__getitem__ = MagicMock(return_value=mock_intf)
-        mock_device.get_active_configuration.return_value = mock_cfg
-        mock_device.__iter__ = MagicMock(return_value=iter([]))
-        mock_device.is_kernel_driver_active.return_value = False
-        mock_util.find_descriptor.side_effect = [mock_ep_out, mock_ep_in]
+    @patch('device.usb_reader.hid')
+    def test_connect_sends_init_handshake(self, mock_hid):
+        mock_hid.enumerate.side_effect = _enum_side_effect(
+            0x2e3c, 0x0049, _entry(0x2e3c, 0x0049))
+        mock_dev = MagicMock()
+        mock_dev.read.return_value = []
+        mock_hid.device.return_value = mock_dev
 
         reader = USBReader()
         reader.connect()
 
-        # Handshake writes to ep_out
-        assert mock_ep_out.write.called
+        # Handshake writes go through the hid device
+        assert mock_dev.write.called
 
-    @patch('device.usb_reader.usb.util')
-    @patch('device.usb_reader.usb.core')
-    def test_connect_reset_failure_continues(self, mock_core, mock_util):
-        mock_device = MagicMock()
-        mock_device.idVendor = 0x2e3c
-        mock_device.idProduct = 0x0049
-        mock_core.find.return_value = mock_device
-        mock_core.USBError = Exception
-        mock_device.reset.side_effect = Exception("reset failed")
-
-        mock_ep_in = MagicMock()
-        mock_ep_out = MagicMock()
-        mock_intf = MagicMock()
-        mock_cfg = MagicMock()
-        mock_cfg.__getitem__ = MagicMock(return_value=mock_intf)
-        mock_device.get_active_configuration.return_value = mock_cfg
-        mock_device.__iter__ = MagicMock(return_value=iter([]))
-        mock_device.is_kernel_driver_active.return_value = False
-        mock_util.find_descriptor.side_effect = [mock_ep_out, mock_ep_in]
+    @patch('device.usb_reader.hid')
+    def test_connect_open_failure_raises(self, mock_hid):
+        mock_hid.enumerate.side_effect = _enum_side_effect(
+            0x2e3c, 0x0049, _entry(0x2e3c, 0x0049))
+        mock_dev = MagicMock()
+        mock_dev.open_path.side_effect = OSError("open failed")
+        mock_hid.device.return_value = mock_dev
 
         reader = USBReader()
-        result = reader.connect()
-        assert result is True
+        with pytest.raises(ConnectionError, match="Failed to open"):
+            reader.connect()
+
+
+def test_connect_without_hidapi_raises():
+    """If hidapi is missing, connect() fails with an actionable message."""
+    with patch('device.usb_reader._HIDAPI_AVAILABLE', False):
+        reader = USBReader()
+        with pytest.raises(ConnectionError, match="hidapi is not installed"):
+            reader.connect()
 
 
 class TestDecodePacket:
@@ -265,6 +213,29 @@ class TestDecodePacket:
             assert r['power'] == 0.0
 
 
+class TestWriteReportId:
+    """The hidapi write must prepend a 0x00 report-id byte (65-byte buffer)."""
+
+    def test_write_prepends_report_id_and_pads(self):
+        reader = USBReader()
+        reader.device = MagicMock()
+        reader.device.write.return_value = 65
+
+        reader._write(b"\xaa\x83" + b"\x00" * 61 + b"\x9e")
+
+        sent = reader.device.write.call_args[0][0]
+        assert len(sent) == 65          # 1 report id + 64 data bytes
+        assert sent[0] == 0x00          # report id
+        assert sent[1] == 0xAA          # first data byte preserved
+
+    def test_write_negative_result_raises(self):
+        reader = USBReader()
+        reader.device = MagicMock()
+        reader.device.write.return_value = -1
+        with pytest.raises(ConnectionError, match="HID write failed"):
+            reader._write(b"\xaa\x83")
+
+
 class TestStartStopReading:
     def test_start_reading_not_connected(self):
         reader = USBReader()
@@ -291,13 +262,12 @@ class TestStartStopReading:
 
 
 class TestDisconnect:
-    @patch('device.usb_reader.usb.util')
-    def test_disconnect_releases_resources(self, mock_util):
+    def test_disconnect_releases_resources(self):
         reader = USBReader()
         reader.device = MagicMock()
         reader.is_connected = True
         reader.disconnect()
-        mock_util.dispose_resources.assert_called_once_with(reader.device)
+        reader.device.close.assert_called_once()
         assert reader.is_connected is False
 
     def test_disconnect_no_device(self):
@@ -308,22 +278,24 @@ class TestDisconnect:
 
 
 class TestGetDeviceInfo:
-    @patch('device.usb_reader.usb.util')
-    def test_get_device_info_connected(self, mock_util):
+    def test_get_device_info_connected(self):
         reader = USBReader()
         reader.device = MagicMock()
-        reader.device.idVendor = 0x2e3c
-        reader.device.idProduct = 0x0049
-        reader.device.iManufacturer = 1
-        reader.device.iProduct = 2
-        reader.device.iSerialNumber = 3
-        mock_util.get_string.return_value = "TestValue"
+        reader.vendor_id = 0x2e3c
+        reader.product_id = 0x0049
+        reader._device_info = {
+            'manufacturer_string': 'FNIRSI',
+            'product_string': 'FNB58',
+            'serial_number': '0001',
+        }
 
         info = reader.get_device_info()
         assert info is not None
-        assert 'vendor_id' in info
-        assert 'product_id' in info
-        assert 'manufacturer' in info
+        assert info['vendor_id'] == '0x2e3c'
+        assert info['product_id'] == '0x0049'
+        assert info['manufacturer'] == 'FNIRSI'
+        assert info['product'] == 'FNB58'
+        assert info['serial'] == '0001'
 
     def test_get_device_info_no_device(self):
         reader = USBReader()
@@ -334,29 +306,29 @@ class TestTriggerVoltage:
     def test_trigger_pd_5v(self):
         reader = USBReader()
         reader.is_connected = True
-        reader.ep_out = MagicMock()
+        reader.device = MagicMock()
         result = reader.trigger_voltage('pd', 5)
         assert result is True
-        reader.ep_out.write.assert_called_once()
+        reader.device.write.assert_called_once()
 
     def test_trigger_qc_9v(self):
         reader = USBReader()
         reader.is_connected = True
-        reader.ep_out = MagicMock()
+        reader.device = MagicMock()
         result = reader.trigger_voltage('qc', 9)
         assert result is True
 
     def test_trigger_unknown_protocol(self):
         reader = USBReader()
         reader.is_connected = True
-        reader.ep_out = MagicMock()
+        reader.device = MagicMock()
         with pytest.raises(ValueError, match="Unknown protocol"):
             reader.trigger_voltage('unknown_proto', 5)
 
     def test_trigger_unsupported_voltage(self):
         reader = USBReader()
         reader.is_connected = True
-        reader.ep_out = MagicMock()
+        reader.device = MagicMock()
         with pytest.raises(ValueError, match="Unsupported voltage"):
             reader.trigger_voltage('pd', 7)
 
@@ -370,22 +342,22 @@ class TestAdjustQC3Voltage:
     def test_adjust_valid_voltage(self):
         reader = USBReader()
         reader.is_connected = True
-        reader.ep_out = MagicMock()
+        reader.device = MagicMock()
         result = reader.adjust_qc3_voltage(9.0)
         assert result is True
-        reader.ep_out.write.assert_called_once()
+        reader.device.write.assert_called_once()
 
     def test_adjust_below_minimum(self):
         reader = USBReader()
         reader.is_connected = True
-        reader.ep_out = MagicMock()
+        reader.device = MagicMock()
         with pytest.raises(ValueError, match="3.6V and 12.0V"):
             reader.adjust_qc3_voltage(3.0)
 
     def test_adjust_above_maximum(self):
         reader = USBReader()
         reader.is_connected = True
-        reader.ep_out = MagicMock()
+        reader.device = MagicMock()
         with pytest.raises(ValueError, match="3.6V and 12.0V"):
             reader.adjust_qc3_voltage(13.0)
 

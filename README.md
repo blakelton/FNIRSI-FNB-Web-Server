@@ -148,9 +148,18 @@ pip install flask pyusb
 ```
 
 **USB Permissions (Required):**
+
+The USB reader uses `hidapi`, which accesses the meter through `/dev/hidraw*`,
+so the udev rule must grant access on the `hidraw` subsystem (the `usb` rules are
+kept for the standalone pyusb scripts):
 ```bash
 sudo tee /etc/udev/rules.d/99-fnirsi.rules << 'EOF'
-# FNIRSI USB Testers
+# FNIRSI USB Testers -- hidraw access for hidapi (app.py / device/usb_reader.py)
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2e3c", ATTRS{idProduct}=="0049", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2e3c", ATTRS{idProduct}=="5558", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="003a", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="003b", MODE="0666", GROUP="plugdev"
+# Raw USB access for the standalone pyusb scripts (fnb48p_monitor.py, etc.)
 SUBSYSTEM=="usb", ATTR{idVendor}=="2e3c", ATTR{idProduct}=="0049", MODE="0666"
 SUBSYSTEM=="usb", ATTR{idVendor}=="2e3c", ATTR{idProduct}=="5558", MODE="0666"
 SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="003a", MODE="0666"
@@ -178,13 +187,20 @@ sudo udevadm trigger
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Install dependencies
-brew install python libusb
+brew install python hidapi
 
 # Create virtual environment and install packages
 python3 -m venv venv
 source venv/bin/activate
-pip install flask pyusb
+pip install -r requirements.txt
 ```
+
+> **macOS USB note:** USB works on macOS **only** via `hidapi` (used by the app).
+> It needs **no root and no Privacy & Security permission**. Do **not** try to fix
+> USB issues with `sudo` or System Settings — macOS reserves the meter's HID
+> interface for the kernel, and libusb/pyusb (used by the older standalone
+> scripts) cannot claim it there. If you still hit trouble, use **Bluetooth mode**
+> (the FNB58 supports BLE). See [Troubleshooting](#troubleshooting).
 
 ---
 
@@ -323,7 +339,7 @@ apple_2.4a, apple_2.1a
 
 **macOS:**
 1. Check USB connection: `system_profiler SPUSBDataType | grep -i fnirsi`
-2. Ensure libusb is installed: `brew list libusb`
+2. Ensure `hidapi` is installed in your environment: `pip show hidapi`
 3. Try unplugging and replugging the device
 
 **Windows:**
@@ -331,9 +347,21 @@ apple_2.4a, apple_2.1a
 2. Ensure Zadig driver is installed (see Installation section)
 3. Try a different USB port
 
-### Permission Denied (Linux)
+### Permission Denied / "Access denied (insufficient permissions)" — Errno 13
 
-Ensure the udev rule is correctly installed and you've unplugged/replugged the device.
+**Linux:** Ensure the udev rule is correctly installed (it must include the
+`hidraw` lines above) and you've unplugged/replugged the device.
+
+**macOS:** If you see `[Errno 13] Access denied (insufficient permissions)` and
+repeating `USB Error` lines, you are running an old build that used libusb/pyusb
+for USB. macOS reserves the FNB58's HID interface for the kernel, so libusb can
+**never** claim it there — and this is **not** fixable with `sudo` or any System
+Settings ▸ Privacy & Security toggle (the error means "another driver owns the
+device," not a file-permission problem). Fixes:
+- Update to the current version, which uses `hidapi` for USB (works on macOS
+  without root): `pip install -r requirements.txt`.
+- Or use **Bluetooth mode** (the FNB58 supports BLE): connect with
+  `{"mode":"bluetooth"}` and approve the macOS Bluetooth prompt the first time.
 
 ### No Data Displayed
 

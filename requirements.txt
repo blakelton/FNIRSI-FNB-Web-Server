@@ -4,6 +4,12 @@ Flask-SocketIO>=5.3.6
 Flask-CORS>=4.0.0
 
 # USB Communication
+# hidapi is the primary USB transport (device/usb_reader.py). It uses the OS HID
+# stack (IOHIDManager on macOS, hidraw on Linux, HID.dll on Windows), so it works
+# on macOS without root -- unlike libusb, which cannot claim the meter's HID
+# interface on macOS. pyusb/libusb1 are still used by the standalone scripts
+# (fnb48p_monitor.py, fnb48p_server.py, simple_server.py).
+hidapi>=0.14.0
 pyusb>=1.2.1
 libusb1>=3.1.0
 

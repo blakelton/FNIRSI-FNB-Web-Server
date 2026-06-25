@@ -105,13 +105,16 @@ if [ ! -f "$UDEV_RULE" ]; then
     else
         $SUDO tee "$UDEV_RULE" > /dev/null << 'EOF'
 # FNIRSI USB Testers - Allow non-root access
-# FNB48P / FNB48S
+# The app uses hidapi (/dev/hidraw*); usb rules are for the standalone pyusb scripts.
+# hidraw (PRIMARY - used by app.py / device/usb_reader.py)
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2e3c", ATTRS{idProduct}=="0049", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2e3c", ATTRS{idProduct}=="5558", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="003a", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="003b", MODE="0666", GROUP="plugdev"
+# usb (standalone pyusb scripts)
 SUBSYSTEM=="usb", ATTR{idVendor}=="2e3c", ATTR{idProduct}=="0049", MODE="0666"
-# FNB58
 SUBSYSTEM=="usb", ATTR{idVendor}=="2e3c", ATTR{idProduct}=="5558", MODE="0666"
-# FNB48 (older)
 SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="003a", MODE="0666"
-# C1
 SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="003b", MODE="0666"
 EOF
     fi

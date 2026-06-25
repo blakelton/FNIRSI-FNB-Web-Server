@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **macOS USB support** ([Errno 13] Access denied): the USB reader now uses
+  `hidapi` instead of libusb/PyUSB. On macOS the kernel (IOHIDFamily) owns the
+  meter's HID interface and libusb can never claim it — failing with
+  `[Errno 13]` regardless of `sudo` or Privacy & Security settings. hidapi goes
+  through IOHIDManager and works on macOS without root. It is cross-platform, so
+  Linux and Windows USB now use the same path.
+- **False "Connected" status**: `connect()` previously swallowed the kernel-detach,
+  configure, and handshake failures and returned success anyway, so the UI showed
+  "✓ Connected via USB" while no data flowed. It now raises a clear, actionable
+  error (pointing to Bluetooth mode / hidapi) when the transport isn't working.
+
+### Changed
+- `device/usb_reader.py` migrated from PyUSB to hidapi (`hid`); `hid` is imported
+  optionally so the app and Bluetooth still load if hidapi is missing.
+- Added `hidapi>=0.14.0` to `requirements.txt`; macOS installer now `brew install`s
+  `hidapi`; Linux udev rules now include `hidraw` entries for non-root access.
+- Decoding, protocol commands, and refresh-rate logic are unchanged.
+
+### Notes
+- The standalone scripts (`fnb48p_monitor.py`, `fnb48p_server.py`,
+  `simple_server.py`) still use PyUSB and retain the macOS limitation; the Flask
+  app (`app.py`) is fully migrated.
+
 ## [1.2.0] - 2026-02-09
 
 ### Added
