@@ -143,8 +143,12 @@ class BluetoothReader:
                 if hasattr(device, 'rssi'):
                     rssi = device.rssi
                 elif hasattr(device, 'details') and device.details:
-                    # Some Bleak versions store RSSI in details
-                    rssi = device.details.get('rssi')
+                    backend_module = type(device.details.adv).__module__
+                    if backend_module.startswith("winrt"):
+                        rssi = device.details.adv.raw_signal_strength_in_dbm
+                    else:
+                        # Some Bleak versions store RSSI in details    
+                        rssi = device.details.get('rssi')
                 fnirsi_devices.append({
                     'address': device.address,
                     'name': device.name,
