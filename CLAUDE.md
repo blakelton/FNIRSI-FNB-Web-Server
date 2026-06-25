@@ -6,7 +6,7 @@ A real-time web application for monitoring FNIRSI USB Power Meters via USB and B
 
 **Supported Devices**: FNB58, FNB48, FNB48S, FNB48P, C1
 
-**Key Technologies**: Flask 3.0, Flask-SocketIO, PyUSB, Bleak, Chart.js, TailwindCSS
+**Key Technologies**: Flask 3.0, Flask-SocketIO, hidapi, Bleak, Chart.js, TailwindCSS
 
 ## Project Structure
 
@@ -15,7 +15,7 @@ fnirsi-web-monitor/
 ├── app.py                      # Main Flask application with REST API and WebSocket
 ├── config.py                   # Configuration management
 ├── device/                     # Device communication layer
-│   ├── usb_reader.py          # USB HID communication (PyUSB)
+│   ├── usb_reader.py          # USB HID communication (hidapi)
 │   ├── bluetooth_reader.py    # Bluetooth LE communication (Bleak)
 │   ├── device_manager.py      # Unified device interface, auto-switching
 │   └── data_processor.py      # Statistics calculation and export
@@ -80,12 +80,21 @@ fnirsi-web-monitor/
 
 ### 1. USB Reader (`device/usb_reader.py`)
 
-**Purpose**: Communicate with FNIRSI via USB HID protocol
+**Purpose**: Communicate with FNIRSI via USB HID protocol, using **hidapi**
+(cython-hidapi, `import hid`) rather than libusb/PyUSB. hidapi goes through the
+OS HID stack (IOHIDManager on macOS, hidraw on Linux, HID.dll on Windows), which
+is the only way to reach these meters on macOS — libusb cannot claim a HID
+interface there (kernel owns it; fails with `[Errno 13]` regardless of sudo).
+`hid` is imported optionally so the app still loads (and Bluetooth works) if
+hidapi is missing; `connect()` raises a clear install hint in that case.
 
 **Key Methods**:
-- `connect()` - Find and configure USB device
+- `connect()` - Find and open device via `hid.enumerate`/`open_path`; raises on
+  any failure (no more swallowed errors / false "connected")
+- `_write(payload)` - Write a 64-byte command, prepending the `0x00` HID
+  report-id byte (so the buffer is 65 bytes); all writes go through this
 - `start_reading(callback)` - Begin background thread
-- `_decode_packet(data)` - Parse 64-byte packets into readings
+- `_decode_packet(data)` - Parse 64-byte packets into readings (transport-agnostic)
 
 **Data Format** (per packet):
 - 4 samples at offsets 1, 17, 33, 49
@@ -94,7 +103,9 @@ fnirsi-web-monitor/
 
 **Important Notes**:
 - FNB58/FNB48S needs 1s refresh, others need 3ms
-- Device may require udev rules on Linux
+- Linux: needs a **hidraw** udev rule for non-root access (see `docker/99-fnirsi.rules`)
+- macOS: works without root or any Privacy & Security permission. `sudo` does NOT
+  help — the old libusb path failed there because the kernel owns the HID interface
 - Always call `disconnect()` to release device
 
 ### 2. Bluetooth Reader (`device/bluetooth_reader.py`)
@@ -369,7 +380,8 @@ BT_SAMPLE_RATE_HZ = 10  # Bluetooth sampling rate
 ### Python Core
 - **Flask 3.0**: Web framework
 - **Flask-SocketIO 5.3**: WebSocket support
-- **PyUSB 1.2**: USB communication
+- **hidapi 0.14+**: USB communication (cross-platform; required for macOS USB)
+- **PyUSB 1.2 / libusb1**: only used by the standalone scripts (fnb48p_monitor.py, etc.)
 - **Bleak 0.21**: Bluetooth LE
 - **NumPy 1.26**: Numerical operations
 - **Pandas 2.1**: Data processing
@@ -415,8 +427,11 @@ socketio.run(app, debug=True)
 
 **USB Issues**:
 - Check `lsusb` (Linux) or System Information (macOS)
-- Verify udev rules (Linux)
-- Try with `sudo` to test permissions
+- Linux: verify the **hidraw** udev rule is installed (not just the usb rule)
+- macOS: do NOT use `sudo` — it can't claim the HID interface. If USB fails,
+  confirm `hidapi` is installed, else use Bluetooth mode
+- `[Errno 13]` + repeating `USB Error` = the old libusb path on macOS; upgrade to
+  the hidapi-based reader
 
 **Bluetooth Issues**:
 - Check system Bluetooth status

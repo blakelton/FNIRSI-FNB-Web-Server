@@ -1,18 +1,49 @@
 """
-USB HID Reader for FNIRSI FNB58
-Based on reverse-engineered protocol from baryluk/fnirsi-usb-power-data-logger
+USB HID Reader for FNIRSI FNB58 and family.
+
+Uses ``hidapi`` (cython-hidapi, imported as ``hid``) rather than libusb/PyUSB.
+The FNIRSI meters expose a vendor-defined HID-class interface. On macOS the
+kernel's IOHIDFamily driver exclusively owns every HID interface, so libusb
+cannot claim it (it fails with "[Errno 13] Access denied" no matter what — root
+and Privacy & Security settings do not help). hidapi talks through Apple's
+IOHIDManager, which opens vendor-defined HID devices without root and without
+any special permission, and it works identically on Linux and Windows.
+
+Protocol (decoding, commands, refresh rates) is unchanged from the original
+PyUSB implementation, based on baryluk/fnirsi-usb-power-data-logger.
+
+hidapi notes that shape this code:
+- Writes: the first byte of the buffer is the HID Report ID. These meters use a
+  single, unnumbered report, so we prepend ``0x00`` to every 64-byte command
+  (giving a 65-byte buffer); the 0x00 is consumed as the report id and the 64
+  data bytes go on the wire. This matters on macOS/Windows especially.
+- Reads: with unnumbered reports, ``read()`` returns the plain 64-byte report
+  (no leading report-id byte), matching the old ``ep_in.read(64)``.
 """
 
-import usb.core
-import usb.util
 import time
 import threading
 from collections import deque
 from datetime import datetime
 
+# hidapi is imported lazily/optionally so the rest of the app (e.g. the
+# Bluetooth path) still works if it is not installed yet. connect() raises a
+# clear, actionable error if it is missing.
+try:
+    import hid  # provided by the `hidapi` (cython-hidapi) package
+    _HIDAPI_AVAILABLE = True
+    _HIDAPI_IMPORT_ERROR = None
+except ImportError as _e:  # pragma: no cover - environment dependent
+    hid = None
+    _HIDAPI_AVAILABLE = False
+    _HIDAPI_IMPORT_ERROR = _e
+
+
+REPORT_SIZE = 64  # bytes per HID report (command and data packets)
+
 
 class USBReader:
-    """USB HID communication with FNIRSI devices"""
+    """USB HID communication with FNIRSI devices (via hidapi)."""
 
     # Supported FNIRSI devices: (vendor_id, product_id)
     SUPPORTED_DEVICES = [
@@ -27,120 +58,157 @@ class USBReader:
     def __init__(self, vendor_id=None, product_ids=None):
         self.vendor_id = vendor_id
         self.product_ids = product_ids
-        self.device = None
-        self.ep_in = None
-        self.ep_out = None
+        self.device = None              # hid.device() handle once opened
         self.is_connected = False
         self.is_reading = False
-        self.is_fnb58 = False
+        self.is_fnb58_or_fnb48s = False
         self.read_thread = None
         self.data_callback = None
         self.data_buffer = deque(maxlen=1000)
-        
+        self._device_info = {}          # populated from hid.enumerate() entry
+
     def connect(self):
-        """Connect to USB device"""
-        # Find device - try specific IDs first if provided, otherwise scan all supported
+        """Connect to the USB device via hidapi.
+
+        Raises:
+            ConnectionError: if hidapi is unavailable, no device is found, or
+                the device rejects the open/handshake. Unlike the previous
+                implementation, failures are NOT swallowed — connect() only
+                returns True when the transport is genuinely working.
+        """
+        if not _HIDAPI_AVAILABLE:
+            raise ConnectionError(
+                "hidapi is not installed. Install it with: pip install hidapi "
+                f"(import failed: {_HIDAPI_IMPORT_ERROR})"
+            )
+
+        # Decide which (vendor, product) pairs to look for.
         if self.vendor_id and self.product_ids:
-            for product_id in self.product_ids:
-                self.device = usb.core.find(idVendor=self.vendor_id, idProduct=product_id)
-                if self.device is not None:
-                    break
+            candidates = [(self.vendor_id, pid) for pid in self.product_ids]
         else:
-            # Scan all supported devices
-            for vendor_id, product_id in self.SUPPORTED_DEVICES:
-                self.device = usb.core.find(idVendor=vendor_id, idProduct=product_id)
-                if self.device is not None:
-                    print(f"Found device: VID=0x{vendor_id:04x} PID=0x{product_id:04x}")
-                    break
+            candidates = list(self.SUPPORTED_DEVICES)
 
-        if self.device is None:
-            raise ConnectionError("FNIRSI device not found. Make sure it's connected via USB.")
+        info = None
+        for vid, pid in candidates:
+            entries = hid.enumerate(vid, pid)
+            if entries:
+                info = self._select_interface(entries)
+                self.vendor_id = vid
+                self.product_id = pid
+                print(f"Found device: VID=0x{vid:04x} PID=0x{pid:04x}")
+                break
 
-        # Reset the device first (critical for proper initialization)
+        if info is None:
+            raise ConnectionError(
+                "FNIRSI device not found. Make sure it's connected via USB."
+            )
+
+        self._device_info = info
+
+        # Open the HID device. No kernel-driver detach, no set_configuration,
+        # no interface claim — hidapi/IOHIDManager handle that for us.
+        self.device = hid.device()
         try:
-            self.device.reset()
-            print("Device reset successful")
-        except usb.core.USBError as e:
-            print(f"Warning: Device reset failed: {e}")
+            self.device.open_path(info["path"])
+        except Exception as e:
+            raise ConnectionError(f"Failed to open USB (HID) device: {e}")
 
-        # Detach kernel driver from ALL interfaces (critical for HID devices)
-        for cfg in self.device:
-            for intf in cfg:
-                if self.device.is_kernel_driver_active(intf.bInterfaceNumber):
-                    try:
-                        self.device.detach_kernel_driver(intf.bInterfaceNumber)
-                        print(f"Detached kernel driver from interface {intf.bInterfaceNumber}")
-                    except usb.core.USBError as e:
-                        print(f"Warning: Could not detach kernel driver from interface {intf.bInterfaceNumber}: {e}")
-
-        # Set configuration
+        # Blocking reads with an explicit per-read timeout (see _read_loop).
         try:
-            self.device.set_configuration()
-        except usb.core.USBError:
-            pass
+            self.device.set_nonblocking(0)
+        except Exception:
+            pass  # not fatal; default is blocking
 
-        # Get endpoints
-        cfg = self.device.get_active_configuration()
-        intf = cfg[(0, 0)]
-        
-        self.ep_out = usb.util.find_descriptor(
-            intf,
-            custom_match=lambda e: usb.util.endpoint_direction(e.bEndpointAddress) == usb.util.ENDPOINT_OUT
-        )
-        
-        self.ep_in = usb.util.find_descriptor(
-            intf,
-            custom_match=lambda e: usb.util.endpoint_direction(e.bEndpointAddress) == usb.util.ENDPOINT_IN
-        )
-        
-        if self.ep_in is None or self.ep_out is None:
-            raise ConnectionError("Could not find USB endpoints")
-        
-        # Detect device type for appropriate refresh rate
-        product_id = self.device.idProduct
-        vendor_id = self.device.idVendor
-        # FNB58 and FNB48S (vendor 0x2e3c) need different protocol
-        self.is_fnb58_or_fnb48s = (vendor_id == 0x2e3c)
+        # FNB58 and FNB48S (vendor 0x2e3c) need a different refresh rate.
+        self.is_fnb58_or_fnb48s = (self.vendor_id == 0x2e3c)
         print(f"Device type: {'FNB58/FNB48S' if self.is_fnb58_or_fnb48s else 'FNB48/C1'}")
 
-        # Send initialization handshake (required to start data streaming)
+        # Required to start data streaming. Errors propagate (no swallowing).
         self._send_init_handshake()
+
+        # Best-effort sanity read: surface a dead pipe immediately, but tolerate
+        # an empty result (the first packet can lag, especially on FNB58 @ 1Hz).
+        try:
+            self.device.read(REPORT_SIZE, 1000)
+        except Exception as e:
+            raise ConnectionError(f"USB read failed after handshake: {e}")
 
         self.is_connected = True
         return True
 
+    @staticmethod
+    def _select_interface(entries):
+        """Pick the right HID interface from hid.enumerate() results.
+
+        Prefer interface 0 (the data interface) when the platform reports an
+        interface number; otherwise fall back to the first entry. On macOS the
+        interface number is often -1, so the fallback is the normal path there.
+        """
+        for entry in entries:
+            if entry.get("interface_number", -1) == 0:
+                return entry
+        return entries[0]
+
+    def _write(self, payload):
+        """Write a 64-byte command, prepending the report-id (0x00) byte.
+
+        Args:
+            payload: bytes of length <= REPORT_SIZE (padded with zeros).
+        """
+        if not self.device:
+            raise ConnectionError("Device not connected")
+        buf = bytes(payload[:REPORT_SIZE])
+        buf = buf + bytes(REPORT_SIZE - len(buf))   # pad to 64 data bytes
+        buf = bytes([0x00]) + buf                    # leading report id
+        result = self.device.write(list(buf))
+        if isinstance(result, int) and result < 0:
+            err = ""
+            try:
+                err = self.device.error()
+            except Exception:
+                pass
+            raise ConnectionError(f"HID write failed: {err}")
+        return result
+
     def _send_init_handshake(self):
-        """Send initialization commands to start data streaming"""
+        """Send initialization commands to start data streaming.
+
+        Raises:
+            ConnectionError: if the device rejects a command, so connect() does
+                not report a false success.
+        """
         try:
             # Initial setup commands
-            self.ep_out.write(b"\xaa\x81" + b"\x00" * 61 + b"\x8e")
-            self.ep_out.write(b"\xaa\x82" + b"\x00" * 61 + b"\x96")
+            self._write(b"\xaa\x81" + b"\x00" * 61 + b"\x8e")
+            self._write(b"\xaa\x82" + b"\x00" * 61 + b"\x96")
 
             # Request data command differs by device type
             if self.is_fnb58_or_fnb48s:
-                self.ep_out.write(b"\xaa\x82" + b"\x00" * 61 + b"\x96")
+                self._write(b"\xaa\x82" + b"\x00" * 61 + b"\x96")
             else:
-                self.ep_out.write(b"\xaa\x83" + b"\x00" * 61 + b"\x9e")
+                self._write(b"\xaa\x83" + b"\x00" * 61 + b"\x9e")
             print("Initialization handshake sent")
+        except ConnectionError:
+            raise
         except Exception as e:
-            print(f"Warning: Handshake failed: {e}")
-    
+            raise ConnectionError(f"USB handshake failed: {e}")
+
     def start_reading(self, callback=None):
         """Start reading data in background thread"""
         if not self.is_connected:
             raise ConnectionError("Device not connected")
-        
+
         self.data_callback = callback
         self.is_reading = True
         self.read_thread = threading.Thread(target=self._read_loop, daemon=True)
         self.read_thread.start()
-    
+
     def stop_reading(self):
         """Stop reading data"""
         self.is_reading = False
         if self.read_thread:
             self.read_thread.join(timeout=2)
-    
+
     def _read_loop(self):
         """Main reading loop - runs in background thread"""
         # Initial delay
@@ -152,11 +220,14 @@ class USBReader:
 
         while self.is_reading:
             try:
-                # Read data packet
-                data = self.ep_in.read(size_or_buffer=64, timeout=5000)
+                # Read data packet (blocking with timeout). Returns a list of
+                # ints, or [] on timeout.
+                data = self.device.read(REPORT_SIZE, 5000)
+                if not data:
+                    continue
 
-                # Decode the packet
-                readings = self._decode_packet(data)
+                # Decode the packet (decoder is transport-agnostic)
+                readings = self._decode_packet(bytes(data))
 
                 # Store in buffer
                 for reading in readings:
@@ -170,16 +241,13 @@ class USBReader:
                 if time.time() >= continue_time:
                     continue_time = time.time() + refresh
                     # Keep-alive command (same for all devices)
-                    self.ep_out.write(b"\xaa\x83" + b"\x00" * 61 + b"\x9e")
+                    self._write(b"\xaa\x83" + b"\x00" * 61 + b"\x9e")
 
-            except usb.core.USBError as e:
+            except Exception as e:
                 if self.is_reading:  # Only print if we're still supposed to be reading
                     print(f"USB Error: {e}")
                     time.sleep(0.1)
-            except Exception as e:
-                print(f"Error in read loop: {e}")
-                time.sleep(0.1)
-    
+
     def _decode_packet(self, data):
         """Decode data packet into readings"""
         readings = []
@@ -238,30 +306,41 @@ class USBReader:
             readings.append(reading)
 
         return readings
-    
+
     def disconnect(self):
         """Disconnect from device"""
         self.stop_reading()
-        
+
         if self.device:
             try:
-                usb.util.dispose_resources(self.device)
-            except usb.core.USBError:
+                self.device.close()
+            except Exception:
                 pass  # Device may already be disconnected
-        
+
         self.is_connected = False
-    
+
     def get_device_info(self):
         """Get device information"""
         if not self.device:
             return None
 
+        info = self._device_info or {}
+
+        def _fallback(getter, key):
+            value = info.get(key)
+            if value:
+                return value
+            try:
+                return getter() or "Unknown"
+            except Exception:
+                return "Unknown"
+
         return {
-            'vendor_id': f"0x{self.device.idVendor:04x}",
-            'product_id': f"0x{self.device.idProduct:04x}",
-            'manufacturer': usb.util.get_string(self.device, self.device.iManufacturer) if self.device.iManufacturer else "Unknown",
-            'product': usb.util.get_string(self.device, self.device.iProduct) if self.device.iProduct else "Unknown",
-            'serial': usb.util.get_string(self.device, self.device.iSerialNumber) if self.device.iSerialNumber else "Unknown"
+            'vendor_id': f"0x{self.vendor_id:04x}" if self.vendor_id else "Unknown",
+            'product_id': f"0x{getattr(self, 'product_id', 0):04x}" if getattr(self, 'product_id', None) else "Unknown",
+            'manufacturer': _fallback(self.device.get_manufacturer_string, 'manufacturer_string'),
+            'product': _fallback(self.device.get_product_string, 'product_string'),
+            'serial': _fallback(self.device.get_serial_number_string, 'serial_number'),
         }
 
     def trigger_voltage(self, protocol, voltage):
@@ -275,7 +354,7 @@ class USBReader:
         Returns:
             bool: True if command sent successfully
         """
-        if not self.is_connected or not self.ep_out:
+        if not self.is_connected or not self.device:
             raise ConnectionError("Device not connected")
 
         # Protocol trigger commands (based on FNIRSI protocol)
@@ -321,11 +400,8 @@ class USBReader:
 
         command = trigger_commands[protocol][voltage]
 
-        # Pad command to 64 bytes
-        padded_command = command + b"\x00" * (64 - len(command))
-
         try:
-            self.ep_out.write(padded_command)
+            self._write(command)
             print(f"✓ Triggered {protocol.upper()} {voltage}V")
             return True
         except Exception as e:
@@ -342,7 +418,7 @@ class USBReader:
         Returns:
             bool: True if command sent successfully
         """
-        if not self.is_connected or not self.ep_out:
+        if not self.is_connected or not self.device:
             raise ConnectionError("Device not connected")
 
         if target_voltage < 3.6 or target_voltage > 12.0:
@@ -353,10 +429,9 @@ class USBReader:
 
         # QC 3.0 adjustment command
         command = b"\x5a\x02" + millivolts.to_bytes(2, byteorder='little')
-        padded_command = command + b"\x00" * (64 - len(command))
 
         try:
-            self.ep_out.write(padded_command)
+            self._write(command)
             print(f"✓ QC 3.0 adjusted to {target_voltage:.2f}V")
             return True
         except Exception as e:
