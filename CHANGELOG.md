@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Linux USB upgrade gap (hidraw udev rule)**: `install_linux.sh` now detects an
+  existing `99-fnirsi.rules` that only has `SUBSYSTEM=="usb"` rules and adds the
+  `hidraw` rules that `hidapi` actually needs. Previously the installer skipped any
+  existing file, so upgraders kept usb-only rules and hit a permission error when
+  opening `/dev/hidraw*`. Also: `connect()` now gives an actionable Linux error
+  (pointing at the hidraw udev rule) when `open_path()` fails.
+- **Interface selection corrected**: `_select_interface()` no longer prefers
+  "interface 0" (which on the FNB58 is the mass-storage interface, not the data
+  interface). The FNB58's USB descriptor confirms the protocol runs on its HID
+  interface (interface 3, interrupt EP 0x83/0x03); `hid.enumerate()` returns only
+  HID interfaces, so the first is taken and extras are logged. This also documents
+  the cause of the old `[Errno 110] Operation timed out` + `no langid` failure on
+  Linux (the pre-hidapi code wrote the handshake to the mass-storage interface).
+
+### Fixed (previously)
 - **macOS USB support** ([Errno 13] Access denied): the USB reader now uses
   `hidapi` instead of libusb/PyUSB. On macOS the kernel (IOHIDFamily) owns the
   meter's HID interface and libusb can never claim it — failing with

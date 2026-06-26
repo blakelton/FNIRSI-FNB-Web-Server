@@ -350,7 +350,19 @@ apple_2.4a, apple_2.1a
 ### Permission Denied / "Access denied (insufficient permissions)" — Errno 13
 
 **Linux:** Ensure the udev rule is correctly installed (it must include the
-`hidraw` lines above) and you've unplugged/replugged the device.
+`hidraw` lines above) and you've unplugged/replugged the device. If you upgraded
+from an older version, your existing `/etc/udev/rules.d/99-fnirsi.rules` may only
+contain `SUBSYSTEM=="usb"` rules — those do **not** grant access to the
+`/dev/hidraw*` node that `hidapi` uses. Re-run `./install_linux.sh` (it now
+detects and adds the missing `hidraw` rules) or copy `docker/99-fnirsi.rules`
+into place, then reload (`sudo udevadm control --reload-rules && sudo udevadm
+trigger`) and replug.
+
+**Linux (old build):** If you see `Handshake failed: [Errno 110] Operation timed
+out` followed by `The device has no langid` / `usb.util.get_string`, you are on a
+pre-`hidapi` build that talked to the wrong USB interface (the FNB58's mass-storage
+interface instead of its HID interface). Update to the current version
+(`pip install -r requirements.txt`) and install the `hidraw` udev rule above.
 
 **macOS:** If you see `[Errno 13] Access denied (insufficient permissions)` and
 repeating `USB Error` lines, you are running an old build that used libusb/pyusb

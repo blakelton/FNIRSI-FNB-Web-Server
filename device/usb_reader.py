@@ -21,6 +21,7 @@ hidapi notes that shape this code:
   (no leading report-id byte), matching the old ``ep_in.read(64)``.
 """
 
+import sys
 import time
 import threading
 from collections import deque
@@ -111,7 +112,7 @@ class USBReader:
         try:
             self.device.open_path(info["path"])
         except Exception as e:
-            raise ConnectionError(f"Failed to open USB (HID) device: {e}")
+            raise ConnectionError(self._open_error_hint(e))
 
         # Blocking reads with an explicit per-read timeout (see _read_loop).
         try:
@@ -138,16 +139,37 @@ class USBReader:
 
     @staticmethod
     def _select_interface(entries):
-        """Pick the right HID interface from hid.enumerate() results.
+        """Pick the HID interface from hid.enumerate() results.
 
-        Prefer interface 0 (the data interface) when the platform reports an
-        interface number; otherwise fall back to the first entry. On macOS the
-        interface number is often -1, so the fallback is the normal path there.
+        hid.enumerate() only returns HID-class interfaces, so every entry here is
+        already a valid candidate. On the FNB58 the data protocol lives on the
+        device's sole HID interface (interface 3, interrupt EP 0x83/0x03 per its
+        USB descriptor); the mass-storage and CDC interfaces are not HID and
+        never appear here, so we take the first HID interface. If a device ever
+        exposes more than one HID interface we log them so the choice is
+        debuggable.
         """
-        for entry in entries:
-            if entry.get("interface_number", -1) == 0:
-                return entry
+        if len(entries) > 1:
+            numbers = [e.get("interface_number", "?") for e in entries]
+            print(f"Multiple HID interfaces found (interface numbers {numbers}); "
+                  "using the first")
         return entries[0]
+
+    @staticmethod
+    def _open_error_hint(error):
+        """Build an actionable error message for an open_path() failure."""
+        msg = f"Failed to open USB (HID) device: {error}"
+        if sys.platform.startswith("linux"):
+            msg += (
+                ". On Linux this is almost always a permissions problem on the "
+                "/dev/hidraw* node. Install the hidraw udev rule, e.g. "
+                "'SUBSYSTEM==\"hidraw\", ATTRS{idVendor}==\"2e3c\", MODE=\"0666\"' "
+                "(re-run ./install_linux.sh, or copy docker/99-fnirsi.rules to "
+                "/etc/udev/rules.d/), reload with 'sudo udevadm control "
+                "--reload-rules && sudo udevadm trigger', then unplug/replug the "
+                "device. A usb-subsystem-only rule does NOT grant hidraw access."
+            )
+        return msg
 
     def _write(self, payload):
         """Write a 64-byte command, prepending the report-id (0x00) byte.
