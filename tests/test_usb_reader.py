@@ -132,6 +132,52 @@ def test_connect_without_hidapi_raises():
             reader.connect()
 
 
+class TestInterfaceSelection:
+    """The FNB58's data protocol is on its HID interface (interface 3 per its
+    USB descriptor). hid.enumerate() only returns HID interfaces, so selection
+    must not assume interface 0 (which is mass storage on the FNB58)."""
+
+    def test_selects_sole_hid_interface_even_if_not_zero(self):
+        entry = _entry(0x2e3c, 0x5558)
+        entry['interface_number'] = 3  # real FNB58 HID interface number
+        assert USBReader._select_interface([entry]) is entry
+
+    def test_returns_first_when_multiple_hid_interfaces(self):
+        a = _entry(0x2e3c, 0x5558); a['interface_number'] = 3
+        b = _entry(0x2e3c, 0x5558); b['interface_number'] = 4
+        assert USBReader._select_interface([a, b]) is a
+
+    @patch('device.usb_reader.hid')
+    @patch('device.usb_reader._HIDAPI_AVAILABLE', True)
+    def test_connect_opens_hid_interface_number_three(self, mock_hid):
+        entry = _entry(0x2e3c, 0x5558)
+        entry['interface_number'] = 3
+        mock_hid.enumerate.side_effect = _enum_side_effect(0x2e3c, 0x5558, entry)
+        mock_dev = MagicMock()
+        mock_dev.read.return_value = []
+        mock_hid.device.return_value = mock_dev
+
+        reader = USBReader()
+        assert reader.connect() is True
+        mock_dev.open_path.assert_called_once_with(entry['path'])
+
+
+class TestOpenErrorHint:
+    def test_linux_hint_mentions_hidraw(self):
+        with patch('device.usb_reader.sys') as mock_sys:
+            mock_sys.platform = 'linux'
+            msg = USBReader._open_error_hint(OSError("Permission denied"))
+        assert 'hidraw' in msg
+        assert 'Permission denied' in msg
+
+    def test_non_linux_hint_is_plain(self):
+        with patch('device.usb_reader.sys') as mock_sys:
+            mock_sys.platform = 'darwin'
+            msg = USBReader._open_error_hint(OSError("boom"))
+        assert 'hidraw' not in msg
+        assert 'boom' in msg
+
+
 class TestDecodePacket:
     def test_decode_valid_data_packet(self, usb_data_packet):
         reader = USBReader()

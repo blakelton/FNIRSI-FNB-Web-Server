@@ -96,9 +96,19 @@ echo "[4/4] Setting up USB permissions..."
 
 UDEV_RULE="/etc/udev/rules.d/99-fnirsi.rules"
 
+# The app uses hidapi, which accesses the meter via /dev/hidraw* and needs a
+# hidraw udev rule. Older installs only had usb-subsystem rules, which do NOT
+# grant hidraw access -- so update an existing file that's missing hidraw lines.
+NEEDS_UDEV_UPDATE=0
 if [ ! -f "$UDEV_RULE" ]; then
+    NEEDS_UDEV_UPDATE=1
     echo "    Creating udev rules for FNIRSI devices..."
+elif ! grep -q 'SUBSYSTEM=="hidraw"' "$UDEV_RULE"; then
+    NEEDS_UDEV_UPDATE=1
+    echo "    Existing udev rules lack hidraw access (required by hidapi); updating..."
+fi
 
+if [ "$NEEDS_UDEV_UPDATE" -eq 1 ]; then
     # Check if we have the rules file in docker directory
     if [ -f "$SCRIPT_DIR/docker/99-fnirsi.rules" ]; then
         $SUDO cp "$SCRIPT_DIR/docker/99-fnirsi.rules" "$UDEV_RULE" || { echo "[!] Failed to copy udev rules"; exit 1; }
@@ -123,7 +133,7 @@ EOF
     $SUDO udevadm trigger || echo "[!] Warning: Failed to trigger udev"
     echo "    [!] Please unplug and replug your FNIRSI device"
 else
-    echo "    udev rules already exist"
+    echo "    udev rules already include hidraw access"
 fi
 
 echo
